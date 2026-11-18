@@ -1,0 +1,571 @@
+"use client";
+
+import Image from "next/image";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import { IconSelect } from "@/components/IconSelect";
+import { LanguageSelect } from "@/components/LanguageSelect";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Select } from "@/components/Select";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useLanguage } from "@/hooks/useLanguage";
+import { usePokemonDetail } from "@/hooks/usePokemonDetail";
+import { usePokemonMoves } from "@/hooks/usePokemonMoves";
+import { pickText } from "@/lib/i18n/languages";
+import type { PokemonIndexEntry } from "@/lib/pokeapi/index-list";
+import { makeFavoriteKey } from "@/lib/pokedex/favorites";
+import { artworkUrl, formatName, formatNumber } from "@/lib/pokedex/format";
+import {
+  descriptionForGame,
+  detailForGame,
+  spriteForGame,
+} from "@/lib/pokedex/game-detail";
+import { formatGame, gameGeneration } from "@/lib/pokedex/games";
+import { typeBackground } from "@/lib/pokedex/type-colors";
+import { CryButton } from "./CryButton";
+import { FavoriteButton } from "./FavoriteButton";
+import { FormPicker } from "./FormPicker";
+import { PokemonDetails } from "./PokemonDetails";
+import { TypeBadge } from "./TypeBadge";
+
+/** The Pokémon before or after this one in the list. */
+export type Neighbor = { id: number; name: string };
+
+type Props = {
+  entry: PokemonIndexEntry;
+  /** Where the clicked card was; the window grows out of (and back into) it. */
+  originRect: DOMRect | null;
+  /** Called after the closing animation. */
+  onClose: () => void;
+  /** Switch the window to another Pokémon, e.g. from the evolution chain. */
+  onSelectPokemon: (id: number) => void;
+  previous: Neighbor | null;
+  next: Neighbor | null;
+  /** The types from the list, so the window is tinted before its data is in. */
+  initialTypes?: string[];
+  /** Species that are shown in their shiny colours. */
+  shinyIds: ReadonlySet<number>;
+  onToggleShiny: () => void;
+  /** Turns shiny on or off for several species at once. */
+  onSetShiny: (ids: readonly number[], on: boolean) => void;
+};
+
+const OPEN_MS = 340;
+const CLOSE_MS = 240;
+const EASING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+
+const FOCUSABLE =
+  'button:not(:disabled), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Transform that makes the panel look like the given card rect. */
+function transformFrom(card: DOMRect, panel: DOMRect) {
+  const scale = card.width / panel.width;
+  const dx = card.left + card.width / 2 - (panel.left + panel.width / 2);
+  const dy = card.top + card.height / 2 - (panel.top + panel.height / 2);
+  return `translate(${dx}px, ${dy}px) scale(${scale})`;
+}
+
+function NeighborButton({
+  direction,
+  neighbor,
+  onSelect,
+}: {
+  direction: "previous" | "next";
+  neighbor: Neighbor | null;
+  onSelect: (id: number) => void;
+}) {
+  const { t } = useLanguage();
+  const label = t(direction === "previous" ? "detail.previous" : "detail.next");
+  return (
+    <button
+      type="button"
+      disabled={!neighbor}
+      onClick={() => neighbor && onSelect(neighbor.id)}
+      aria-label={neighbor ? `${label}: ${neighbor.name}` : label}
+      className="flex size-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-selected disabled:opacity-30 disabled:hover:bg-transparent"
+    >
+      <svg
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+        className="size-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d={direction === "previous" ? "M10 3L5 8l5 5" : "M6 3l5 5-5 5"} />
+      </svg>
+    </button>
+  );
+}
+
+export function PokemonModal({
+  entry,
+  originRect,
+  onClose,
+  onSelectPokemon,
+  previous,
+  next,
+  initialTypes,
+  shinyIds,
+  onToggleShiny,
+  onSetShiny,
+}: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const closingRef = useRef(false);
+  const { language, t } = useLanguage();
+  // The chosen form belongs to one species; moving to another one resets it.
+  const [formChoice, setFormChoice] = useState<{
+    speciesId: number;
+    formId: number;
+  } | null>(null);
+  if (formChoice && formChoice.speciesId !== entry.id) setFormChoice(null);
+  const formId = formChoice?.formId ?? null;
+  const { detail, loading, failed, retry } = usePokemonDetail(entry.id, formId);
+  const currentFormId =
+    formId ?? detail?.forms.find((form) => form.isDefault)?.id ?? null;
+
+  // A form without shiny artwork is shown normally.
+  const shiny = shinyIds.has(entry.id);
+  const shinyOn = shiny && (!detail || detail.shinyArtwork !== null);
+
+  // The game you picked stays while you browse, as long as the Pokémon on
+  // screen has moves in it; otherwise its newest game is shown. Without moves
+  // (e.g. Gigantamax) there are no games, so no history either.
+  const [preferredGame, setPreferredGame] = useState<string | null>(null);
+  const game =
+    detail && preferredGame && detail.games.includes(preferredGame)
+      ? preferredGame
+      : (detail?.defaultGame ?? null);
+  const moves = usePokemonMoves(entry.id, detail?.pokemonId ?? null, game);
+  const shown = detail && game ? detailForGame(detail, game) : detail;
+
+  // The heart belongs to the form on screen.
+  const { keys: favoriteKeys, toggle: toggleFavorite } = useFavorites();
+  const favoriteKey = makeFavoriteKey(
+    entry.id,
+    currentFormId,
+    detail?.forms.find((form) => form.isDefault)?.id ?? null,
+  );
+  const isFavorite = favoriteKeys.includes(favoriteKey);
+
+  // Grow out of the clicked card.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const backdrop = backdropRef.current;
+    if (!panel || !backdrop || prefersReducedMotion()) return;
+
+    backdrop.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: OPEN_MS,
+      easing: "ease-out",
+    });
+    const from = originRect
+      ? { transform: transformFrom(originRect, panel.getBoundingClientRect()) }
+      : { transform: "scale(0.94)" };
+    panel.animate(
+      [
+        { ...from, opacity: originRect ? 0.6 : 0 },
+        { transform: "none", opacity: 1 },
+      ],
+      { duration: OPEN_MS, easing: EASING },
+    );
+    // Only on mount; later changes of the origin must not replay the animation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const requestClose = useCallback(() => {
+    const panel = panelRef.current;
+    const backdrop = backdropRef.current;
+    if (closingRef.current) return;
+    closingRef.current = true;
+
+    if (!panel || !backdrop || prefersReducedMotion()) {
+      onClose();
+      return;
+    }
+
+    // Shrink back into the card if it is still on screen.
+    const card = document
+      .querySelector(`[data-pokemon-card="${entry.id}"]`)
+      ?.getBoundingClientRect();
+    const cardVisible =
+      card && card.bottom > 0 && card.top < window.innerHeight;
+    const to = cardVisible
+      ? transformFrom(card, panel.getBoundingClientRect())
+      : "scale(0.94)";
+
+    backdrop.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: CLOSE_MS,
+      easing: "ease-in",
+      fill: "forwards",
+    });
+    panel
+      .animate(
+        [
+          { transform: "none", opacity: 1 },
+          { transform: to, opacity: cardVisible ? 0.6 : 0 },
+        ],
+        { duration: CLOSE_MS, easing: "ease-in", fill: "forwards" },
+      )
+      .finished.then(onClose, onClose);
+  }, [entry.id, onClose]);
+
+  // Keyboard: Escape closes, Tab stays inside the window.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        requestClose();
+        return;
+      }
+      // Left and right go to the neighbours, unless the arrows are in use
+      // (text fields, the move tabs, a scrolling table).
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        const target = event.target as HTMLElement | null;
+        const taken = target?.closest(
+          'input, select, textarea, [role="tab"], [role="region"]',
+        );
+        const neighbor = event.key === "ArrowLeft" ? previous : next;
+        const modified =
+          event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+        if (!taken && neighbor && !modified) {
+          event.preventDefault();
+          onSelectPokemon(neighbor.id);
+        }
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = [
+        ...panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ];
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [requestClose, previous, next, onSelectPokemon]);
+
+  // A newly selected Pokémon starts at the top of the window.
+  useEffect(() => {
+    panelRef.current?.scrollTo({ top: 0 });
+    // A button that has just become disabled (the last neighbour) drops focus.
+    const active = document.activeElement;
+    if (
+      !panelRef.current?.contains(active) ||
+      (active instanceof HTMLButtonElement && active.disabled)
+    ) {
+      closeButtonRef.current?.focus();
+    }
+  }, [entry.id]);
+
+  // Lock page scroll and hand focus back to the opener afterwards.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+
+  const gameSprite =
+    detail && game ? spriteForGame(detail.gameSprites, game, shinyOn) : null;
+  // Which picture is large; a game without a sprite always shows the artwork.
+  const [showSprite, setShowSprite] = useState(false);
+  const spriteView = showSprite && gameSprite !== null;
+  const artwork =
+    (shinyOn ? detail?.shinyArtwork : detail?.artwork) ??
+    artworkUrl(entry.id, shinyOn);
+
+  const name = pickText(detail?.names, language) ?? formatName(entry.name);
+  const description =
+    detail && game
+      ? descriptionForGame(detail, game, language)
+      : {
+          text: pickText(detail?.descriptions, language),
+          fromGame: null as string | null,
+        };
+
+  return createPortal(
+    <div
+      ref={backdropRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pokemon-dialog-title"
+        className="relative max-h-[90vh] min-h-[28rem] w-full max-w-3xl overflow-y-auto lg:max-w-5xl rounded-3xl border border-border bg-surface p-6 shadow-2xl sm:p-8"
+        style={{
+          background: typeBackground(shown?.types ?? initialTypes ?? []),
+        }}
+      >
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          {/* Phones only get round icon buttons; the lists open on press. */}
+          <div className="sm:hidden">
+            <LanguageSelect round />
+          </div>
+          <div className="hidden sm:block">
+            <LanguageSelect compact />
+          </div>
+          {game && detail && (
+            <>
+              <IconSelect
+                aria-label={t("moves.game")}
+                className="sm:hidden"
+                badge={
+                  Number.isFinite(gameGeneration(game))
+                    ? String(gameGeneration(game))
+                    : undefined
+                }
+                icon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="2" y="6" width="20" height="12" rx="4" />
+                    <path d="M7 10v4M5 12h4" />
+                    <circle cx="15.5" cy="11" r="0.8" />
+                    <circle cx="18" cy="13" r="0.8" />
+                  </svg>
+                }
+                value={game}
+                onChange={(event) => setPreferredGame(event.target.value)}
+              >
+                {detail.games.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {formatGame(slug, language)}
+                  </option>
+                ))}
+              </IconSelect>
+              <div className="hidden sm:block">
+                <Select
+                  compact
+                  aria-label={t("moves.game")}
+                  className="h-9 w-full sm:max-w-64"
+                  value={game}
+                  onChange={(event) => setPreferredGame(event.target.value)}
+                >
+                  {detail.games.map((slug) => (
+                    <option key={slug} value={slug}>
+                      {formatGame(slug, language)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </>
+          )}
+          <ThemeToggle round />
+          <FavoriteButton
+            active={isFavorite}
+            label={`${formatName(entry.name)} ${t(isFavorite ? "favorites.remove" : "favorites.add")}`}
+            onToggle={() => toggleFavorite(favoriteKey)}
+            className="bg-surface-muted"
+          />
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={requestClose}
+            aria-label={t("detail.close")}
+            className="flex size-9 items-center justify-center rounded-full bg-surface-muted text-lg leading-none hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
+          >
+            ×
+          </button>
+        </div>
+
+        <header className="mb-6 grid pt-8 sm:pt-0 grid-cols-1 justify-items-center gap-x-2 gap-y-6 text-center sm:grid-cols-[auto_1fr] sm:justify-items-start sm:text-left lg:grid-cols-[auto_auto_1fr] lg:gap-x-6">
+          <div className="relative size-40 sm:size-48">
+            {spriteView ? (
+              <Image
+                src={gameSprite}
+                alt=""
+                width={96}
+                height={96}
+                unoptimized
+                className="size-full object-contain [image-rendering:pixelated]"
+              />
+            ) : (
+              <Image
+                src={artwork}
+                alt=""
+                width={475}
+                height={475}
+                sizes="192px"
+                className="size-full object-contain"
+                priority
+              />
+            )}
+            {gameSprite && game && (
+              <button
+                type="button"
+                onClick={() => setShowSprite(!spriteView)}
+                aria-pressed={spriteView}
+                aria-label={t(
+                  spriteView ? "detail.showArtwork" : "detail.showSprite",
+                )}
+                title={
+                  spriteView
+                    ? t("detail.showArtwork")
+                    : formatGame(game, language)
+                }
+                className="absolute bottom-0 right-0 size-20 rounded-xl bg-surface-muted/80 p-1 hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
+              >
+                {spriteView ? (
+                  <Image
+                    src={artwork}
+                    alt=""
+                    width={80}
+                    height={80}
+                    sizes="80px"
+                    className="size-full object-contain"
+                  />
+                ) : (
+                  <Image
+                    src={gameSprite}
+                    alt=""
+                    width={96}
+                    height={96}
+                    unoptimized
+                    className="size-full object-contain [image-rendering:pixelated]"
+                  />
+                )}
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col items-center gap-2 sm:items-start">
+            <div className="flex items-center gap-1">
+              <NeighborButton
+                direction="previous"
+                neighbor={previous}
+                onSelect={onSelectPokemon}
+              />
+              <span className="min-w-12 text-center text-sm font-medium text-muted">
+                {formatNumber(entry.id)}
+              </span>
+              <NeighborButton
+                direction="next"
+                neighbor={next}
+                onSelect={onSelectPokemon}
+              />
+            </div>
+            <h2 id="pokemon-dialog-title" className="text-3xl font-bold">
+              {name}
+            </h2>
+            {pickText(detail?.genus, language) && (
+              <p className="text-sm text-muted">
+                {pickText(detail?.genus, language)}
+              </p>
+            )}
+            <div className="flex min-h-6 flex-wrap justify-center gap-1.5 sm:justify-start">
+              {shown?.types.map((type) => (
+                <TypeBadge key={type} type={type} />
+              ))}
+            </div>
+            {detail?.cry && <CryButton key={detail.cry} url={detail.cry} />}
+          </div>
+          {description.text && (
+            <div className="text-left sm:col-span-2 lg:col-span-1 lg:self-center">
+              <p className="leading-relaxed">{description.text}</p>
+              {description.fromGame && (
+                <p className="mt-1 text-xs text-muted">
+                  {t("detail.descriptionFrom")}{" "}
+                  {formatGame(description.fromGame, language)}
+                </p>
+              )}
+            </div>
+          )}
+        </header>
+
+        {detail ? (
+          <div
+            aria-busy={loading}
+            className={`transition-opacity ${loading ? "opacity-50" : ""}`}
+          >
+            {failed && (
+              <div
+                role="alert"
+                className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2 text-sm"
+              >
+                <span>{t("detail.error")}</span>
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="rounded-md bg-accent-solid px-3 py-1 font-medium text-white"
+                >
+                  {t("common.retry")}
+                </button>
+              </div>
+            )}
+            <PokemonDetails
+              detail={shown ?? detail}
+              moves={moves}
+              onSelectPokemon={onSelectPokemon}
+              shinyIds={shinyIds}
+              onSetShiny={onSetShiny}
+              game={game}
+              forms={
+                <FormPicker
+                  speciesName={detail.speciesName}
+                  forms={detail.forms}
+                  currentFormId={currentFormId ?? detail.pokemonId}
+                  onSelect={(selected) =>
+                    setFormChoice({ speciesId: entry.id, formId: selected })
+                  }
+                  shiny={detail.shinyArtwork !== null ? shinyOn : null}
+                  onToggleShiny={onToggleShiny}
+                />
+              }
+            />
+          </div>
+        ) : failed ? (
+          <div role="alert" className="flex flex-col items-center gap-3 py-8">
+            <p className="text-muted">{t("detail.error")}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="rounded-md bg-accent-solid px-4 py-2 font-medium text-white"
+            >
+              {t("common.retry")}
+            </button>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-muted" aria-live="polite">
+            {t("detail.loading")}
+          </p>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}

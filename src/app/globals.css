@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+/* Dark mode is class-based so a toggle can override the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Native controls (selects, scrollbars) follow the theme too. */
+:root {
+  color-scheme: light;
+  --background: #f4f5f7;
+  --foreground: #171717;
+  --surface: #ffffff;
+  --surface-muted: #e9ebef;
+  --border: #d5d8de;
+  --muted: #5f6672;
+  /* Accent text, and accent backgrounds with white text: both pass 4.5:1. */
+  --accent: #c92a20;
+  --accent-solid: #c92a20;
+  /* Selected chips, tabs and toggles: neutral and inverted, so it works on every type tint. */
+  --selected: #171717;
+  --selected-text: #ffffff;
+  /* How much of a type's colour tints the cards and the detail window. */
+  --type-tint: 18%;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0e1014;
+  --foreground: #ededed;
+  --surface: #181b22;
+  --surface-muted: #232733;
+  --border: #2f3441;
+  --muted: #9aa1ae;
+  --accent: #ff6257;
+  --accent-solid: #d93025;
+  --selected: #ededed;
+  --selected-text: #0e1014;
+  --type-tint: 24%;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-solid: var(--accent-solid);
+  --color-selected: var(--selected);
+  --color-selected-text: var(--selected-text);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/*
+ * Loading placeholders. They stay hidden for the first 150 ms, so things that
+ * load quickly never flash a placeholder; then they pulse until replaced.
+ */
+.skeleton {
+  visibility: hidden;
+  background: var(--surface-muted);
+  animation:
+    skeleton-show 0s 150ms forwards,
+    skeleton-pulse 1.4s ease-in-out 150ms infinite;
+}
+
+@keyframes skeleton-show {
+  to {
+    visibility: visible;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: skeleton-show 0s 150ms forwards;
+  }
+}
+
+/* Card tilt: --tilt-x/--tilt-y/--glare-* are set from useTilt on mouse move. */
+.tilt-card {
+  position: relative;
+  transform: perspective(800px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg)) scale(1);
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out;
+  will-change: transform;
+}
+
+.tilt-card[data-tilting="true"] {
+  transform: perspective(800px) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg)) scale(1.04);
+  box-shadow: 0 18px 32px -12px rgb(0 0 0 / 0.35);
+}
+
+.tilt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    rgb(255 255 255 / 0.28),
+    transparent 55%
+  );
+  transition: opacity 200ms ease-out;
+}
+
+.tilt-card[data-tilting="true"]::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card,
+  .tilt-card[data-tilting="true"] {
+    transform: none;
+    transition: none;
+  }
+  .tilt-card::after {
+    display: none;
+  }
+}
+
+html {
+  /* No layout shift when the detail window locks page scroll. */
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    var(--font-geist-sans), Arial, Helvetica, "Hiragino Sans", "Yu Gothic",
+    Meiryo, sans-serif;
+}

@@ -1,0 +1,265 @@
+import { describe, expect, it } from "vitest";
+import type { PokemonDetail } from "@/lib/pokeapi/detail";
+import {
+  abilitiesForGeneration,
+  descriptionForGame,
+  detailForGame,
+  spriteForGame,
+  statsForGeneration,
+} from "@/lib/pokedex/game-detail";
+
+const stats = [
+  { name: "hp", value: 35 },
+  { name: "attack", value: 55 },
+  { name: "defense", value: 40 },
+  { name: "special-attack", value: 50 },
+  { name: "special-defense", value: 50 },
+  { name: "speed", value: 90 },
+];
+const past = [
+  { generation: 1, stats: [{ name: "special", value: 50 }] },
+  {
+    generation: 5,
+    stats: [
+      { name: "defense", value: 30 },
+      { name: "special-defense", value: 40 },
+    ],
+  },
+];
+
+const value = (list: { name: string; value: number }[], name: string) =>
+  list.find((stat) => stat.name === name)?.value;
+
+describe("statsForGeneration", () => {
+  it("keeps the current stats for a generation without history", () => {
+    expect(statsForGeneration(stats, past, 6)).toEqual(stats);
+  });
+
+  it("uses the older values up to and including the entry's generation", () => {
+    const result = statsForGeneration(stats, past, 5);
+    expect(value(result, "defense")).toBe(30);
+    expect(value(result, "special-defense")).toBe(40);
+    expect(value(result, "attack")).toBe(55);
+  });
+
+  it("merges older and newer entries in generation 1 with one Special stat", () => {
+    const result = statsForGeneration(stats, past, 1);
+    expect(result.map((stat) => stat.name)).toEqual([
+      "hp",
+      "attack",
+      "defense",
+      "special",
+      "speed",
+    ]);
+    expect(value(result, "special")).toBe(50);
+    expect(value(result, "defense")).toBe(30);
+  });
+
+  it("treats an unknown (newest) game as current", () => {
+    expect(statsForGeneration(stats, past, Number.POSITIVE_INFINITY)).toEqual(
+      stats,
+    );
+  });
+});
+
+const ability = (slot: number, name: string, hidden = false) => ({
+  slot,
+  name,
+  hidden,
+  names: {},
+  descriptions: {},
+});
+
+describe("abilitiesForGeneration", () => {
+  const abilities = [
+    ability(1, "cute-charm"),
+    ability(2, "magic-guard"),
+    ability(3, "friend-guard", true),
+  ];
+  const past = [
+    { generation: 3, slots: [{ slot: 2, ability: null }] },
+    { generation: 4, slots: [{ slot: 3, ability: null }] },
+  ];
+  const names = (list: { name: string }[]) => list.map((a) => a.name);
+
+  it("has none before generation 3", () => {
+    expect(abilitiesForGeneration(abilities, past, 2)).toEqual([]);
+  });
+
+  it("leaves out slots that were still empty", () => {
+    expect(names(abilitiesForGeneration(abilities, past, 3))).toEqual([
+      "cute-charm",
+    ]);
+    expect(names(abilitiesForGeneration(abilities, past, 4))).toEqual([
+      "cute-charm",
+      "magic-guard",
+    ]);
+  });
+
+  it("uses today's abilities after the last change", () => {
+    expect(abilitiesForGeneration(abilities, past, 5)).toEqual(abilities);
+  });
+
+  it("puts back an ability that was replaced", () => {
+    const result = abilitiesForGeneration(
+      [ability(1, "cursed-body")],
+      [
+        {
+          generation: 6,
+          slots: [{ slot: 1, ability: ability(1, "levitate") }],
+        },
+      ],
+      6,
+    );
+    expect(names(result)).toEqual(["levitate"]);
+  });
+});
+
+describe("detailForGame", () => {
+  const relations = (doubleFrom: string[]) => ({
+    double_damage_from: doubleFrom.map((name) => ({ name })),
+    half_damage_from: [],
+    no_damage_from: [],
+    double_damage_to: [],
+    half_damage_to: [],
+    no_damage_to: [],
+  });
+  const matchups = (defense: number) => ({
+    defense: { fighting: defense },
+    offense: {},
+  });
+  const detail = {
+    descriptions: { en: "newest" },
+    gameDescriptions: {
+      "red-blue": { en: "old" },
+      "sword-shield": { en: "SwSh" },
+    },
+    stats,
+    pastStats: past,
+    types: ["fairy"],
+    pastTypes: [{ generation: 5, types: ["normal"] }],
+    pastAbilities: [],
+    abilities: [ability(1, "cute-charm")],
+    typeCharts: [
+      { name: "fairy", relations: relations(["poison"]), past: [] },
+      {
+        name: "normal",
+        relations: relations(["fighting"]),
+        past: [{ generation: 1, relations: relations([]) }],
+      },
+    ],
+    matchups: matchups(1),
+  } as unknown as PokemonDetail;
+
+  it("uses the stats and types of that game's generation", () => {
+    const result = detailForGame(detail, "red-blue");
+    expect(value(result.stats, "special")).toBe(50);
+    expect(result.types).toEqual(["normal"]);
+    expect(result.abilities).toEqual([]);
+    // Normal had no weakness to Fighting in generation 1's chart (test data).
+    expect(result.matchups.defense.fighting).toBe(1);
+  });
+
+  it("keeps the current types after the generation of the old ones", () => {
+    const result = detailForGame(detail, "x-y");
+    expect(result.types).toEqual(["fairy"]);
+    expect(result.matchups.defense.poison).toBe(2);
+  });
+
+  it("uses the type chart of the generation", () => {
+    const result = detailForGame(detail, "yellow");
+    expect(result.types).toEqual(["normal"]);
+    expect(result.matchups.defense.fighting).toBe(1);
+    expect(detailForGame(detail, "emerald").matchups.defense.fighting).toBe(2);
+  });
+});
+
+describe("descriptionForGame", () => {
+  const detail = (gameDescriptions: Record<string, Record<string, string>>) =>
+    ({
+      descriptions: { en: "newest", ja: "最新" },
+      gameDescriptions,
+    }) as unknown as PokemonDetail;
+
+  const texts = {
+    "red-blue": { en: "RB" },
+    "x-y": { en: "XY", ja: "XY日" },
+    "sword-shield": { en: "SwSh", ja: "剣盾" },
+  };
+
+  it("uses the game's own text, without naming another game", () => {
+    expect(descriptionForGame(detail(texts), "x-y", "ja")).toEqual({
+      text: "XY日",
+      fromGame: null,
+    });
+  });
+
+  it("uses an expansion's main game for the text", () => {
+    expect(
+      descriptionForGame(detail(texts), "the-isle-of-armor", "en"),
+    ).toEqual({ text: "SwSh", fromGame: null });
+  });
+
+  it("takes the closest game with text in the language, and names it", () => {
+    // Red/Blue has no Japanese; X/Y (generation 6) is closer than Sword/Shield.
+    expect(descriptionForGame(detail(texts), "red-blue", "ja")).toEqual({
+      text: "XY日",
+      fromGame: "x-y",
+    });
+    expect(descriptionForGame(detail(texts), "scarlet-violet", "ja")).toEqual({
+      text: "剣盾",
+      fromGame: "sword-shield",
+    });
+  });
+
+  it("prefers the newer of two equally close games", () => {
+    const equal = { "red-blue": { ja: "旧" }, "gold-silver": { ja: "新" } };
+    // Yellow is one step from both Red/Blue (before) and Gold/Silver (after).
+    expect(descriptionForGame(detail(equal), "yellow", "ja")).toEqual({
+      text: "新",
+      fromGame: "gold-silver",
+    });
+  });
+
+  it("uses English when the language has no text in any game", () => {
+    expect(
+      descriptionForGame(detail({ "red-blue": { en: "RB" } }), "x-y", "de"),
+    ).toEqual({ text: "RB", fromGame: "red-blue" });
+    expect(descriptionForGame(detail(texts), "x-y", "nl")).toEqual({
+      text: "XY",
+      fromGame: null,
+    });
+  });
+
+  it("falls back to the newest text without any per-game texts", () => {
+    expect(descriptionForGame(detail({}), "x-y", "ja")).toEqual({
+      text: "最新",
+      fromGame: null,
+    });
+  });
+});
+
+describe("spriteForGame", () => {
+  const sprites = {
+    "red-blue": { front: "rb.png", shiny: null },
+    gold: { front: "gold.png", shiny: "gold-s.png" },
+    "ultra-sun-ultra-moon": { front: "usum.png", shiny: null },
+  };
+
+  it("finds the sprite of the game itself", () => {
+    expect(spriteForGame(sprites, "red-blue", false)).toBe("rb.png");
+  });
+
+  it("uses the shiny sprite when there is one, else the normal one", () => {
+    expect(spriteForGame(sprites, "gold-silver", true)).toBe("gold-s.png");
+    expect(spriteForGame(sprites, "red-blue", true)).toBe("rb.png");
+  });
+
+  it("borrows the sprites of the game a game shares them with", () => {
+    expect(spriteForGame(sprites, "sun-moon", false)).toBe("usum.png");
+  });
+
+  it("is null for a game without sprites", () => {
+    expect(spriteForGame(sprites, "legends-za", false)).toBeNull();
+  });
+});
