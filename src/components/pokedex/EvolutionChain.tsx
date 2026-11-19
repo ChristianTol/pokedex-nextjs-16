@@ -199,7 +199,11 @@ export function EvolutionChain({
       <button
         type="button"
         onClick={() => onSetShiny(family, !allShiny)}
-        className="inline-flex items-center gap-1.5 self-start rounded-full border border-border px-3 py-1 text-sm transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-selected"
+        className={`inline-flex items-center gap-1.5 self-start rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-selected ${
+          allShiny
+            ? "border-selected bg-selected text-selected-text"
+            : "border-border hover:bg-surface-muted"
+        }`}
       >
         <SparkleIcon />
         {t(allShiny ? "evolution.normalFamily" : "evolution.shinyFamily")}
