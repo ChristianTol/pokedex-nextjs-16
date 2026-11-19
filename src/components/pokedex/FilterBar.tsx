@@ -336,15 +336,10 @@ export function FilterBar({
           {dropdowns(false)}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted">
-          <span aria-live="polite">
-            {resultCount} {t("list.count")}
-          </span>
           <div className="flex items-center gap-4">
-            <FavoritesToggle
-              active={filters.favorites}
-              onToggle={() => onChange({ favorites: !filters.favorites })}
-              className=""
-            />
+            <span aria-live="polite">
+              {resultCount} {t("list.count")}
+            </span>
             {hasActiveFilters(filters) && (
               <button
                 type="button"
@@ -354,6 +349,15 @@ export function FilterBar({
                 {t("filters.clear")}
               </button>
             )}
+          </div>
+          <div className="flex items-center gap-3">
+            <LanguageSelect compact />
+            <FavoritesToggle
+              active={filters.favorites}
+              onToggle={() => onChange({ favorites: !filters.favorites })}
+              className=""
+            />
+            <ThemeToggle />
           </div>
         </div>
       </div>
