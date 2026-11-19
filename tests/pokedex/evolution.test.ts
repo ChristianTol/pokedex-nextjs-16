@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { EvolutionMethod, EvolutionNode } from "@/lib/pokeapi/detail";
 import {
+  evolutionForForm,
   evolutionIds,
-  evolutionItems,
+  regionOf,
+  evolutionSteps,
   itemSpriteUrl,
   evolutionLabel,
   evolutionLabels,
@@ -250,27 +252,217 @@ describe("evolutionLabels", () => {
   });
 });
 
-describe("evolutionItems", () => {
-  it("lists the stone and the held item, without doubles", () => {
-    const stone = { name: "moon-stone", names: {} };
-    const held = { name: "oval-stone", names: {} };
+describe("evolutionSteps", () => {
+  const context = {
+    t: (key: string) => key,
+    tOptional: () => null,
+    language: "en" as const,
+  } as unknown as LabelContext;
+  const stone = (name: string) => ({ name, names: {} });
+
+  it("keeps each way together with its own item", () => {
     expect(
-      evolutionItems(
+      evolutionSteps(
         [
-          method({ trigger: "use-item", item: stone, isDefault: true }),
-          method({ heldItem: held, isDefault: true }),
-          method({ trigger: "use-item", item: stone, isDefault: true }),
+          method({ trigger: "use-item", item: stone("ice-stone"), isDefault: true }),
+          method({ trigger: "use-item", item: stone("fire-stone"), isDefault: true }),
         ],
         null,
+        context,
       ),
-    ).toEqual(["moon-stone", "oval-stone"]);
+    ).toEqual([
+      { label: "Ice Stone", items: ["ice-stone"] },
+      { label: "Fire Stone", items: ["fire-stone"] },
+    ]);
   });
 
-  it("is empty for a way without items", () => {
-    expect(evolutionItems([method({ level: 16 })], null)).toEqual([]);
+  it("lists the stone and the held item of one way, without doubles", () => {
+    const steps = evolutionSteps(
+      [
+        method({ item: stone("moon-stone"), trigger: "use-item", isDefault: true }),
+        method({ item: stone("moon-stone"), trigger: "use-item", isDefault: true }),
+        method({
+          trigger: "trade",
+          heldItem: stone("metal-coat"),
+          isDefault: true,
+        }),
+      ],
+      null,
+      context,
+    );
+    expect(steps.map((step) => step.items)).toEqual([
+      ["moon-stone"],
+      ["metal-coat"],
+    ]);
   });
 
+  it("has no items for a way without them", () => {
+    expect(evolutionSteps([method({ level: 16 })], null, context)).toEqual([
+      { label: "evolution.level 16", items: [] },
+    ]);
+  });
+});
+
+describe("itemSpriteUrl", () => {
   it("points at the PokéAPI item sprite", () => {
     expect(itemSpriteUrl("moon-stone")).toMatch(/\/sprites\/items\/moon-stone\.png$/);
+  });
+});
+
+describe("regionOf", () => {
+  it("recognises regional forms only", () => {
+    expect(regionOf("ninetales-alola")).toBe("alola");
+    expect(regionOf("darmanitan-galar-standard")).toBe("galar");
+    expect(regionOf("growlithe-hisui")).toBe("hisui");
+    expect(regionOf("ninetales")).toBeNull();
+    expect(regionOf("vivillon-polar")).toBeNull();
+    expect(regionOf(undefined)).toBeNull();
+  });
+});
+
+describe("evolutionForForm", () => {
+  const stone = (name: string) => ({ name, names: {} });
+  const vulpix = (): EvolutionNode => ({
+    id: 37,
+    name: "vulpix",
+    names: {},
+    methods: [],
+    varieties: { vulpix: 37, "vulpix-alola": 10103 },
+    evolvesTo: [
+      {
+        id: 38,
+        name: "ninetales",
+        names: {},
+        varieties: { ninetales: 38, "ninetales-alola": 10104 },
+        methods: [
+          method({ trigger: "use-item", item: stone("fire-stone") }),
+          method({
+            trigger: "use-item",
+            item: stone("ice-stone"),
+            requiredForm: "vulpix-alola",
+            evolvedForm: "ninetales-alola",
+          }),
+        ],
+        evolvesTo: [],
+      },
+    ],
+  });
+  const stones = (root: EvolutionNode) =>
+    root.evolvesTo[0].methods.map((m) => m.item?.name);
+
+  it("keeps the Fire Stone way for the ordinary form", () => {
+    const root = evolutionForForm(vulpix(), "ninetales", 38);
+    expect(stones(root)).toEqual(["fire-stone"]);
+    expect(root.formId).toBeUndefined();
+    expect(root.evolvesTo[0].formId).toBeUndefined();
+  });
+
+  it("keeps the Ice Stone way and the Alolan forms for the Alolan one", () => {
+    const root = evolutionForForm(vulpix(), "ninetales-alola", 38);
+    expect(stones(root)).toEqual(["ice-stone"]);
+    expect(root.formId).toBe(10103);
+    expect(root.evolvesTo[0].formId).toBe(10104);
+  });
+
+  it("keeps every way when none fits the form on screen", () => {
+    const root = vulpix();
+    root.evolvesTo[0].methods = [
+      method({ trigger: "level-up", level: 16, requiredForm: "x-alola" }),
+    ];
+    expect(evolutionForForm(root, "ninetales", 38).evolvesTo[0].methods).toHaveLength(1);
+  });
+});
+
+describe("evolutionForForm with branches per region", () => {
+  const node = (
+    id: number,
+    name: string,
+    methods: EvolutionMethod[] = [],
+    evolvesTo: EvolutionNode[] = [],
+    varieties: Record<string, number> = {},
+  ): EvolutionNode => ({ id, name, names: {}, methods, evolvesTo, varieties });
+  const names = (root: EvolutionNode) => root.evolvesTo.map((c) => c.name);
+
+  const wooper = () =>
+    node(
+      194,
+      "wooper",
+      [],
+      [
+        node(195, "quagsire", [method({ level: 20 })]),
+        node(980, "clodsire", [
+          method({ level: 20, requiredForm: "wooper-paldea" }),
+        ]),
+      ],
+      { wooper: 194, "wooper-paldea": 10253 },
+    );
+
+  it("lets ordinary Wooper evolve only into Quagsire", () => {
+    const root = evolutionForForm(wooper(), "wooper", 194);
+    expect(names(root)).toEqual(["quagsire"]);
+    expect(root.formId).toBeUndefined();
+  });
+
+  it("lets Paldean Wooper evolve only into Clodsire", () => {
+    const root = evolutionForForm(wooper(), "wooper-paldea", 194);
+    expect(names(root)).toEqual(["clodsire"]);
+    expect(root.formId).toBe(10253);
+  });
+
+  it("follows the Pokémon on screen further along the chain", () => {
+    expect(names(evolutionForForm(wooper(), "quagsire", 195))).toEqual([
+      "quagsire",
+    ]);
+    const clodsire = evolutionForForm(wooper(), "clodsire", 980);
+    expect(names(clodsire)).toEqual(["clodsire"]);
+    expect(clodsire.formId).toBe(10253);
+  });
+
+  const meowth = () =>
+    node(
+      52,
+      "meowth",
+      [],
+      [
+        node(53, "persian", [
+          method({ level: 28 }),
+          method({
+            level: 28,
+            requiredForm: "meowth-alola",
+            evolvedForm: "persian-alola",
+          }),
+        ], [], { persian: 53, "persian-alola": 10107 }),
+        node(863, "perrserker", [
+          method({ level: 28, requiredForm: "meowth-galar" }),
+        ]),
+      ],
+      { meowth: 52, "meowth-alola": 10107, "meowth-galar": 10161 },
+    );
+
+  it("gives each Meowth its own evolution", () => {
+    const plain = evolutionForForm(meowth(), "meowth", 52);
+    expect(names(plain)).toEqual(["persian"]);
+    expect(plain.formId).toBeUndefined();
+    expect(plain.evolvesTo[0].methods).toHaveLength(1);
+
+    const alola = evolutionForForm(meowth(), "meowth-alola", 52);
+    expect(names(alola)).toEqual(["persian"]);
+    expect(alola.formId).toBe(10107);
+    expect(alola.evolvesTo[0].formId).toBe(10107);
+
+    const galar = evolutionForForm(meowth(), "meowth-galar", 52);
+    expect(names(galar)).toEqual(["perrserker"]);
+    expect(galar.formId).toBe(10161);
+  });
+
+  it("keeps branches that do not depend on the region", () => {
+    const eevee = node(133, "eevee", [], [
+      node(134, "vaporeon", [method({ requiredForm: "eevee" })]),
+      node(135, "jolteon", [method({ requiredForm: "eevee" })]),
+    ]);
+    expect(names(evolutionForForm(eevee, "eevee", 133))).toEqual([
+      "vaporeon",
+      "jolteon",
+    ]);
   });
 });

@@ -67,7 +67,7 @@ export function PokemonDetails({
   game,
 }: {
   detail: PokemonDetail;
-  onSelectPokemon: (id: number) => void;
+  onSelectPokemon: (id: number, formId?: number) => void;
   /** Form picker, with the shiny switch. */
   forms: React.ReactNode;
   moves: PokemonMovesState;
@@ -133,6 +133,7 @@ export function PokemonDetails({
           <Section title={t("detail.evolution")}>
             <EvolutionChain
               root={detail.evolution}
+              formName={detail.name}
               currentId={detail.id}
               onSelect={onSelectPokemon}
               shinyIds={shinyIds}

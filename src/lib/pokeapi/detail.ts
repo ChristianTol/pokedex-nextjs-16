@@ -65,6 +65,9 @@ export type EvolutionMethod = {
   partySpecies?: string;
   tradeSpecies?: string;
   region?: string;
+  /** Pokémon slugs of the form that evolves / that it evolves into, e.g. "vulpix-alola". */
+  requiredForm?: string;
+  evolvedForm?: string;
   /** "day", "night", "dusk" or "full-moon". */
   timeOfDay?: string;
   moveCount?: number;
@@ -91,6 +94,10 @@ export type EvolutionNode = {
   /** The ways the previous stage evolves into this one; empty for the first stage. */
   methods: EvolutionMethod[];
   evolvesTo: EvolutionNode[];
+  /** Pokémon slug → pokemon id of the species' forms; filled in by `getPokemonDetail`. */
+  varieties?: Record<string, number>;
+  /** Pokémon id of the form to show instead of the default, e.g. Alolan Vulpix. */
+  formId?: number;
 };
 
 export type PokemonForm = {
@@ -256,6 +263,8 @@ type EvolutionDetailResponse = {
   party_species?: RefResponse;
   trade_species?: RefResponse;
   region?: RefResponse;
+  required_pokemon_form?: RefResponse;
+  evolved_pokemon_form?: RefResponse;
   time_of_day?: string;
   min_move_count?: number | null;
   min_happiness?: number | null;
@@ -539,6 +548,10 @@ export function parseEvolutionMethod(
   if (detail.party_species) method.partySpecies = detail.party_species.name;
   if (detail.trade_species) method.tradeSpecies = detail.trade_species.name;
   if (detail.region) method.region = detail.region.name;
+  if (detail.required_pokemon_form)
+    method.requiredForm = detail.required_pokemon_form.name;
+  if (detail.evolved_pokemon_form)
+    method.evolvedForm = detail.evolved_pokemon_form.name;
   if (isSet(detail.time_of_day)) method.timeOfDay = detail.time_of_day;
   if (isSet(detail.min_move_count)) method.moveCount = detail.min_move_count;
   if (isSet(detail.min_happiness)) method.happiness = detail.min_happiness;
@@ -629,12 +642,14 @@ export function withMethodNames(
 export function withEvolutionNames(
   node: EvolutionNode,
   namesById: ReadonlyMap<number, LocalizedText>,
+  varietiesById: ReadonlyMap<number, Record<string, number>> = new Map(),
 ): EvolutionNode {
   return {
     ...node,
     names: namesById.get(node.id) ?? {},
+    varieties: varietiesById.get(node.id) ?? {},
     evolvesTo: node.evolvesTo.map((child) =>
-      withEvolutionNames(child, namesById),
+      withEvolutionNames(child, namesById, varietiesById),
     ),
   };
 }
@@ -837,12 +852,24 @@ export async function getPokemonDetail(
     ]),
   );
 
+  const varietiesById = new Map<number, Record<string, number>>(
+    [species, ...otherSpecies].map((entry) => [
+      entry.id,
+      Object.fromEntries(
+        entry.varieties.map((variety) => [
+          variety.pokemon.name,
+          idFromUrl(variety.pokemon.url),
+        ]),
+      ),
+    ]),
+  );
+
   return parseDetail(
     pokemon,
     species,
     Object.fromEntries(abilityNames.map((name, i) => [name, abilities[i]])),
     withMethodNames(
-      withEvolutionNames(evolution, namesById),
+      withEvolutionNames(evolution, namesById, varietiesById),
       (kind, name) => refNames.get(`${kind}:${name}`) ?? {},
     ),
     typeRelations,

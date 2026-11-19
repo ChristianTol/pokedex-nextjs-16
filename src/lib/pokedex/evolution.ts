@@ -205,21 +205,97 @@ export function evolutionLabels(
   ];
 }
 
-/** The items (stone, held item) the ways that apply in a game ask for, without doubles. */
-export function evolutionItems(
+/** One way of evolving: what it asks for in words, and the items it needs. */
+export type EvolutionStep = { label: string; items: string[] };
+
+/** The ways that apply in a game, each with its own items, without doubles. */
+export function evolutionSteps(
   methods: readonly EvolutionMethod[],
   game: string | null,
-): string[] {
-  return [
-    ...new Set(
-      methodsForGame(methods, game).flatMap((method) =>
-        [method.item, method.heldItem].flatMap((ref) => (ref ? [ref.name] : [])),
-      ),
-    ),
-  ];
+  context: LabelContext,
+): EvolutionStep[] {
+  const steps = new Map<string, EvolutionStep>();
+  for (const method of methodsForGame(methods, game)) {
+    const label = evolutionLabel(method, context);
+    if (steps.has(label)) continue;
+    const items = [method.item, method.heldItem].flatMap((ref) =>
+      ref ? [ref.name] : [],
+    );
+    steps.set(label, { label, items });
+  }
+  return [...steps.values()];
 }
 
 /** The small PokéAPI picture of an item, e.g. "moon-stone". */
 export function itemSpriteUrl(item: string): string {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${item}.png`;
+}
+
+const REGION = /-(alola|galar|hisui|paldea)(?:-|$)/;
+
+/** The regional form a Pokémon slug is, e.g. "ninetales-alola" is "alola". */
+export function regionOf(slug: string | undefined): string | null {
+  return (slug && REGION.exec(slug)?.[1]) || null;
+}
+
+const methodRegion = (method: EvolutionMethod) =>
+  regionOf(method.evolvedForm) ?? regionOf(method.requiredForm);
+
+/**
+ * The evolution tree as it applies to the Pokémon on screen. The chain is
+ * shared by a species and its regional forms, so:
+ * - a step keeps the ways of the viewed form's region (or, failing that, all
+ *   of them): Ice Stone only works on Alolan Vulpix, Fire Stone on the other;
+ * - where a stage splits into branches that differ by region (Wooper to
+ *   Quagsire, Paldean Wooper to Clodsire), only the branch of the viewed form
+ *   is kept, or the one the Pokémon on screen is part of;
+ * - the stages get the regional form's id, to show the right picture.
+ */
+export function evolutionForForm(
+  root: EvolutionNode,
+  formName: string,
+  currentId: number,
+): EvolutionNode {
+  const region = regionOf(formName);
+  const formIdOf = (node: EvolutionNode, slug: string | undefined) =>
+    slug && regionOf(slug) ? node.varieties?.[slug] : undefined;
+
+  const visit = (node: EvolutionNode, incoming?: string): EvolutionNode => {
+    let branches = node.evolvesTo.map((child) => {
+      const matching = child.methods.filter(
+        (method) => methodRegion(method) === region,
+      );
+      const methods = matching.length > 0 ? matching : child.methods;
+      return {
+        child: { ...child, methods },
+        // Has a way for the viewed form's region (none for the ordinary form).
+        forThisForm: child.methods.some(
+          (method) => methodRegion(method) === region,
+        ),
+        holdsCurrent: evolutionIds(child).includes(currentId),
+        required: methods.find((m) => regionOf(m.requiredForm))?.requiredForm,
+        evolved: methods.find((m) => regionOf(m.evolvedForm))?.evolvedForm,
+      };
+    });
+
+    if (!branches.every((branch) => branch.forThisForm)) {
+      const holding = branches.filter((branch) => branch.holdsCurrent);
+      const fitting = branches.filter((branch) => branch.forThisForm);
+      if (holding.length > 0) branches = holding;
+      else if (fitting.length > 0) branches = fitting;
+    }
+
+    // The stage is the regional form only if every branch asks for it.
+    const required = branches[0]?.required;
+    const sameForm = branches.every((branch) => branch.required === required);
+    const formId =
+      formIdOf(node, incoming) ??
+      (sameForm ? formIdOf(node, required) : undefined);
+    return {
+      ...node,
+      ...(formId !== undefined && { formId }),
+      evolvesTo: branches.map((branch) => visit(branch.child, branch.evolved)),
+    };
+  };
+  return visit(root);
 }

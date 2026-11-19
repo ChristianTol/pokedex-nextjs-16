@@ -1,20 +1,25 @@
 import Image from "next/image";
+import { useMemo } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { pickText } from "@/lib/i18n/languages";
 import type { EvolutionNode } from "@/lib/pokeapi/detail";
 import { artworkUrl, formatName, formatNumber } from "@/lib/pokedex/format";
 import {
+  evolutionForForm,
   evolutionIds,
-  evolutionItems,
-  evolutionLabels,
+  evolutionSteps,
+  type EvolutionStep,
 } from "@/lib/pokedex/evolution";
 import { ItemSprite } from "./ItemSprite";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
   root: EvolutionNode;
+  /** Pokémon slug of the form on screen; picks the regional branch. */
+  formName: string;
   currentId: number;
-  onSelect: (id: number) => void;
+  /** `formId` is set for a regional form such as Alolan Ninetales. */
+  onSelect: (id: number, formId?: number) => void;
   /** Species that are shown shiny. */
   shinyIds: ReadonlySet<number>;
   /** Turns shiny on or off for several species at once. */
@@ -22,6 +27,27 @@ type Props = {
   /** The game chosen in the window; picks the ways to evolve that apply. */
   game: string | null;
 };
+
+/** One way of evolving: its item pictures with the words under them. */
+function Step({ step }: { step: EvolutionStep }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <ItemSprites items={step.items} />
+      <span className="text-center text-xs">{step.label}</span>
+    </div>
+  );
+}
+
+function ItemSprites({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <span aria-hidden="true" className="flex items-center gap-1">
+      {items.map((item) => (
+        <ItemSprite key={item} item={item} />
+      ))}
+    </span>
+  );
+}
 
 function Arrow({
   methods,
@@ -31,27 +57,37 @@ function Arrow({
   game: string | null;
 }) {
   const { t, tOptional, language } = useLanguage();
-  const labels = evolutionLabels(methods, game, { t, tOptional, language });
-  const items = evolutionItems(methods, game);
-  return (
-    <div className="flex min-w-14 max-w-44 flex-col items-center gap-0.5 text-muted">
-      {items.length > 0 && (
-        <span aria-hidden="true" className="flex items-center gap-1">
-          {items.map((item) => (
-            <ItemSprite key={item} item={item} />
-          ))}
-        </span>
-      )}
+  const steps = evolutionSteps(methods, game, { t, tOptional, language });
+  const arrow = (
+    <>
       <span aria-hidden="true" className="hidden text-xl sm:inline">
         →
       </span>
       <span aria-hidden="true" className="text-xl sm:hidden">
         ↓
       </span>
-      {labels.map((label) => (
-        <span key={label} className="text-center text-xs">
-          {label}
-        </span>
+    </>
+  );
+  const frame = "flex min-w-14 max-w-44 flex-col items-center gap-0.5 text-muted";
+  // One way: the item above the arrow, the words below it. Several ways: each
+  // keeps its picture and words together, the first above and the rest below.
+  if (steps.length <= 1) {
+    const [only] = steps;
+    return (
+      <div className={frame}>
+        {only && <ItemSprites items={only.items} />}
+        {arrow}
+        {only && <span className="text-center text-xs">{only.label}</span>}
+      </div>
+    );
+  }
+  const [first, ...rest] = steps;
+  return (
+    <div className={`${frame} gap-1.5`}>
+      <Step step={first} />
+      <div className="flex flex-col items-center">{arrow}</div>
+      {rest.map((step) => (
+        <Step key={step.label} step={step} />
       ))}
     </div>
   );
@@ -65,7 +101,8 @@ function EvolutionButton({
 }: {
   node: EvolutionNode;
   current: boolean;
-  onSelect: (id: number) => void;
+  /** `formId` is set for a regional form such as Alolan Ninetales. */
+  onSelect: (id: number, formId?: number) => void;
   shiny: boolean;
 }) {
   const { language } = useLanguage();
@@ -73,14 +110,14 @@ function EvolutionButton({
   return (
     <button
       type="button"
-      onClick={() => onSelect(node.id)}
+      onClick={() => onSelect(node.id, node.formId)}
       aria-current={current ? "true" : undefined}
       className={`flex w-28 flex-col items-center gap-1 rounded-xl border p-2 text-center transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-selected ${
         current ? "border-selected bg-surface-muted" : "border-border"
       }`}
     >
       <Image
-        src={artworkUrl(node.id, shiny)}
+        src={artworkUrl(node.formId ?? node.id, shiny)}
         alt=""
         width={96}
         height={96}
@@ -101,7 +138,8 @@ function Branch({
 }: {
   node: EvolutionNode;
   currentId: number;
-  onSelect: (id: number) => void;
+  /** `formId` is set for a regional form such as Alolan Ninetales. */
+  onSelect: (id: number, formId?: number) => void;
   shinyIds: ReadonlySet<number>;
   game: string | null;
 }) {
@@ -137,7 +175,8 @@ function Branch({
 }
 
 export function EvolutionChain({
-  root,
+  root: familyRoot,
+  formName,
   currentId,
   onSelect,
   shinyIds,
@@ -145,6 +184,10 @@ export function EvolutionChain({
   game,
 }: Props) {
   const { t } = useLanguage();
+  const root = useMemo(
+    () => evolutionForForm(familyRoot, formName, currentId),
+    [familyRoot, formName, currentId],
+  );
   if (root.evolvesTo.length === 0) {
     return <p className="text-sm text-muted">{t("detail.noEvolution")}</p>;
   }

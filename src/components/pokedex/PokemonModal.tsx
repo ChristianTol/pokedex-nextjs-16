@@ -135,6 +135,12 @@ export function PokemonModal({
   if (formChoice && formChoice.speciesId !== entry.id) setFormChoice(null);
   const formId = formChoice?.formId ?? null;
   const { detail, loading, failed, retry } = usePokemonDetail(entry.id, formId);
+  // A regional form in the evolution chain opens that form, also on another species.
+  const selectInChain = (id: number, regionalFormId?: number) => {
+    if (regionalFormId !== undefined)
+      setFormChoice({ speciesId: id, formId: regionalFormId });
+    if (id !== entry.id) onSelectPokemon(id);
+  };
   const currentFormId =
     formId ?? detail?.forms.find((form) => form.isDefault)?.id ?? null;
 
@@ -530,7 +536,7 @@ export function PokemonModal({
             <PokemonDetails
               detail={shown ?? detail}
               moves={moves}
-              onSelectPokemon={onSelectPokemon}
+              onSelectPokemon={selectInChain}
               shinyIds={shinyIds}
               onSetShiny={onSetShiny}
               game={game}

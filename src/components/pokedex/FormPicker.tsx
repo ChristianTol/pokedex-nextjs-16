@@ -38,7 +38,7 @@ export function FormPicker({
             const active = form.id === currentFormId;
             const item = formItem(form.name);
             return (
-              <li key={form.id}>
+              <li key={form.id} className="flex">
                 <button
                   type="button"
                   onClick={() => onSelect(form.id)}
@@ -61,7 +61,7 @@ export function FormPicker({
             );
           })}
         {shiny !== null && (
-          <li>
+          <li className="flex">
             <button
               type="button"
               onClick={onToggleShiny}
