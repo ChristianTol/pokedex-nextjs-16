@@ -43,7 +43,10 @@ export function AppHeader() {
           </ul>
         </nav>
       </div>
-      <div className="flex items-center gap-3">
+      {/* On the list the phone filter bar has these buttons, so it stays sticky. */}
+      <div
+        className={`items-center gap-3 ${pathname === "/" ? "hidden md:flex" : "flex"}`}
+      >
         <LanguageSelect />
         <ThemeToggle />
       </div>
