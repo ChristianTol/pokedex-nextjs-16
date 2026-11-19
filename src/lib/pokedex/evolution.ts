@@ -204,3 +204,22 @@ export function evolutionLabels(
     ),
   ];
 }
+
+/** The items (stone, held item) the ways that apply in a game ask for, without doubles. */
+export function evolutionItems(
+  methods: readonly EvolutionMethod[],
+  game: string | null,
+): string[] {
+  return [
+    ...new Set(
+      methodsForGame(methods, game).flatMap((method) =>
+        [method.item, method.heldItem].flatMap((ref) => (ref ? [ref.name] : [])),
+      ),
+    ),
+  ];
+}
+
+/** The small PokéAPI picture of an item, e.g. "moon-stone". */
+export function itemSpriteUrl(item: string): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${item}.png`;
+}

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { EvolutionMethod, EvolutionNode } from "@/lib/pokeapi/detail";
 import {
   evolutionIds,
+  evolutionItems,
+  itemSpriteUrl,
   evolutionLabel,
   evolutionLabels,
   methodsForGame,
@@ -245,5 +247,30 @@ describe("evolutionLabels", () => {
     expect(evolutionLabels(same, null, context)).toEqual([
       "evolution.level 30",
     ]);
+  });
+});
+
+describe("evolutionItems", () => {
+  it("lists the stone and the held item, without doubles", () => {
+    const stone = { name: "moon-stone", names: {} };
+    const held = { name: "oval-stone", names: {} };
+    expect(
+      evolutionItems(
+        [
+          method({ trigger: "use-item", item: stone, isDefault: true }),
+          method({ heldItem: held, isDefault: true }),
+          method({ trigger: "use-item", item: stone, isDefault: true }),
+        ],
+        null,
+      ),
+    ).toEqual(["moon-stone", "oval-stone"]);
+  });
+
+  it("is empty for a way without items", () => {
+    expect(evolutionItems([method({ level: 16 })], null)).toEqual([]);
+  });
+
+  it("points at the PokéAPI item sprite", () => {
+    expect(itemSpriteUrl("moon-stone")).toMatch(/\/sprites\/items\/moon-stone\.png$/);
   });
 });

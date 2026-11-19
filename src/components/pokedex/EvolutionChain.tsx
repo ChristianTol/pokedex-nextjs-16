@@ -3,7 +3,12 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { pickText } from "@/lib/i18n/languages";
 import type { EvolutionNode } from "@/lib/pokeapi/detail";
 import { artworkUrl, formatName, formatNumber } from "@/lib/pokedex/format";
-import { evolutionIds, evolutionLabels } from "@/lib/pokedex/evolution";
+import {
+  evolutionIds,
+  evolutionItems,
+  evolutionLabels,
+} from "@/lib/pokedex/evolution";
+import { ItemSprite } from "./ItemSprite";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
@@ -27,8 +32,16 @@ function Arrow({
 }) {
   const { t, tOptional, language } = useLanguage();
   const labels = evolutionLabels(methods, game, { t, tOptional, language });
+  const items = evolutionItems(methods, game);
   return (
     <div className="flex min-w-14 max-w-44 flex-col items-center gap-0.5 text-muted">
+      {items.length > 0 && (
+        <span aria-hidden="true" className="flex items-center gap-1">
+          {items.map((item) => (
+            <ItemSprite key={item} item={item} />
+          ))}
+        </span>
+      )}
       <span aria-hidden="true" className="hidden text-xl sm:inline">
         →
       </span>

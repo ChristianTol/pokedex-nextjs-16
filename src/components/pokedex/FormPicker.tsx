@@ -1,6 +1,8 @@
 import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonForm } from "@/lib/pokeapi/detail";
-import { formatFormLabel } from "@/lib/pokedex/format";
+import { formatFormLabel, formatName } from "@/lib/pokedex/format";
+import { formItem } from "@/lib/pokedex/form-items";
+import { ItemSprite } from "./ItemSprite";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
@@ -34,18 +36,23 @@ export function FormPicker({
         {forms.length > 1 &&
           forms.map((form) => {
             const active = form.id === currentFormId;
+            const item = formItem(form.name);
             return (
               <li key={form.id}>
                 <button
                   type="button"
                   onClick={() => onSelect(form.id)}
                   aria-pressed={active}
+                  title={item ? formatName(item) : undefined}
                   className={`${CHIP} ${
                     active
                       ? "border-selected bg-selected text-selected-text"
                       : "border-border hover:bg-surface-muted"
                   }`}
                 >
+                  {/* Bigger than the text line but pulled into the padding, so the chip
+                      keeps the height of the others. */}
+                  {item && <ItemSprite item={item} size={28} className="-my-1" />}
                   {form.isDefault
                     ? t("detail.formDefault")
                     : formatFormLabel(speciesName, form.name)}
