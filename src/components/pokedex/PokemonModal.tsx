@@ -31,7 +31,7 @@ import { typeBackground } from "@/lib/pokedex/type-colors";
 import { CryButton } from "./CryButton";
 import { FavoriteButton } from "./FavoriteButton";
 import { FormPicker } from "./FormPicker";
-import { PokemonDetails } from "./PokemonDetails";
+import { CARD, PokemonDetails, PokemonFacts } from "./PokemonDetails";
 import { TypeBadge } from "./TypeBadge";
 
 /** The Pokémon before or after this one in the list. */
@@ -327,59 +327,61 @@ export function PokemonModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="pokemon-dialog-title"
-        className="relative max-h-[90vh] min-h-[28rem] w-full max-w-3xl overflow-y-auto lg:max-w-5xl rounded-3xl border border-border bg-surface p-6 shadow-2xl sm:p-8"
+        className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-surface shadow-2xl lg:max-w-5xl"
         style={{
           background: typeBackground(shown?.types ?? initialTypes ?? []),
         }}
       >
-        <div className="absolute right-4 top-4 flex items-center gap-2">
-          {/* Phones only get round icon buttons; the lists open on press. */}
-          <div className="sm:hidden">
-            <LanguageSelect round />
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-surface/60 px-4 py-3 backdrop-blur-md sm:px-6">
+          <div className="flex items-center gap-1">
+            <NeighborButton
+              direction="previous"
+              neighbor={previous}
+              onSelect={onSelectPokemon}
+            />
+            <span className="min-w-12 text-center text-sm font-medium text-muted">
+              {formatNumber(entry.id)}
+            </span>
+            <NeighborButton
+              direction="next"
+              neighbor={next}
+              onSelect={onSelectPokemon}
+            />
           </div>
-          <div className="hidden sm:block">
-            <LanguageSelect compact />
-          </div>
-          {game && detail && (
-            <>
-              <IconSelect
-                aria-label={t("moves.game")}
-                className="sm:hidden"
-                badge={
-                  Number.isFinite(gameGeneration(game))
-                    ? String(gameGeneration(game))
-                    : undefined
-                }
-                icon={
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="size-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="2" y="6" width="20" height="12" rx="4" />
-                    <path d="M7 10v4M5 12h4" />
-                    <circle cx="15.5" cy="11" r="0.8" />
-                    <circle cx="18" cy="13" r="0.8" />
-                  </svg>
-                }
-                value={game}
-                onChange={(event) => setPreferredGame(event.target.value)}
-              >
-                {detail.games.map((slug) => (
-                  <option key={slug} value={slug}>
-                    {formatGame(slug, language)}
-                  </option>
-                ))}
-              </IconSelect>
-              <div className="hidden sm:block">
-                <Select
-                  compact
+          <div className="flex items-center gap-2">
+            {/* Phones only get round icon buttons; the lists open on press. */}
+            <div className="sm:hidden">
+              <LanguageSelect round />
+            </div>
+            <div className="hidden sm:block">
+              <LanguageSelect compact />
+            </div>
+            {game && detail && (
+              <>
+                <IconSelect
                   aria-label={t("moves.game")}
-                  className="h-9 w-full sm:max-w-64"
+                  className="sm:hidden"
+                  badge={
+                    Number.isFinite(gameGeneration(game))
+                      ? String(gameGeneration(game))
+                      : undefined
+                  }
+                  icon={
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="2" y="6" width="20" height="12" rx="4" />
+                      <path d="M7 10v4M5 12h4" />
+                      <circle cx="15.5" cy="11" r="0.8" />
+                      <circle cx="18" cy="13" r="0.8" />
+                    </svg>
+                  }
                   value={game}
                   onChange={(event) => setPreferredGame(event.target.value)}
                 >
@@ -388,159 +390,142 @@ export function PokemonModal({
                       {formatGame(slug, language)}
                     </option>
                   ))}
-                </Select>
-              </div>
-            </>
-          )}
-          <ThemeToggle round />
-          <FavoriteButton
-            active={isFavorite}
-            label={`${formatName(entry.name)} ${t(isFavorite ? "favorites.remove" : "favorites.add")}`}
-            onToggle={() => toggleFavorite(favoriteKey)}
-            className="bg-surface-muted"
-          />
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={requestClose}
-            aria-label={t("detail.close")}
-            className="flex size-9 items-center justify-center rounded-full bg-surface-muted text-lg leading-none hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
-          >
-            ×
-          </button>
+                </IconSelect>
+                <div className="hidden sm:block">
+                  <Select
+                    compact
+                    aria-label={t("moves.game")}
+                    className="h-9 w-full sm:max-w-64"
+                    value={game}
+                    onChange={(event) => setPreferredGame(event.target.value)}
+                  >
+                    {detail.games.map((slug) => (
+                      <option key={slug} value={slug}>
+                        {formatGame(slug, language)}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </>
+            )}
+            <ThemeToggle round />
+            <FavoriteButton
+              active={isFavorite}
+              label={`${formatName(entry.name)} ${t(isFavorite ? "favorites.remove" : "favorites.add")}`}
+              onToggle={() => toggleFavorite(favoriteKey)}
+              className="bg-surface-muted"
+            />
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={requestClose}
+              aria-label={t("detail.close")}
+              className="flex size-9 items-center justify-center rounded-full bg-surface-muted text-lg leading-none hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
-        <header className="mb-6 grid pt-8 sm:pt-0 grid-cols-1 justify-items-center gap-x-2 gap-y-6 text-center sm:grid-cols-[auto_1fr] sm:justify-items-start sm:text-left lg:grid-cols-[auto_auto_1fr] lg:gap-x-6">
-          <div className="relative size-40 sm:size-48">
-            {spriteView ? (
-              <Image
-                src={gameSprite}
-                alt=""
-                width={96}
-                height={96}
-                unoptimized
-                className="size-full object-contain [image-rendering:pixelated]"
-              />
-            ) : (
-              <Image
-                src={artwork}
-                alt=""
-                width={475}
-                height={475}
-                sizes="192px"
-                className="size-full object-contain"
-                priority
-              />
-            )}
-            {gameSprite && game && (
-              <button
-                type="button"
-                onClick={() => setShowSprite(!spriteView)}
-                aria-pressed={spriteView}
-                aria-label={t(
-                  spriteView ? "detail.showArtwork" : "detail.showSprite",
-                )}
-                title={
-                  spriteView
-                    ? t("detail.showArtwork")
-                    : formatGame(game, language)
-                }
-                className="absolute bottom-0 right-0 size-20 rounded-xl bg-surface-muted/80 p-1 hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
-              >
-                {spriteView ? (
-                  <Image
-                    src={artwork}
-                    alt=""
-                    width={80}
-                    height={80}
-                    sizes="80px"
-                    className="size-full object-contain"
-                  />
-                ) : (
-                  <Image
-                    src={gameSprite}
-                    alt=""
-                    width={96}
-                    height={96}
-                    unoptimized
-                    className="size-full object-contain [image-rendering:pixelated]"
-                  />
-                )}
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-2 sm:items-start">
-            <div className="flex items-center gap-1">
-              <NeighborButton
-                direction="previous"
-                neighbor={previous}
-                onSelect={onSelectPokemon}
-              />
-              <span className="min-w-12 text-center text-sm font-medium text-muted">
-                {formatNumber(entry.id)}
-              </span>
-              <NeighborButton
-                direction="next"
-                neighbor={next}
-                onSelect={onSelectPokemon}
-              />
-            </div>
-            <h2 id="pokemon-dialog-title" className="text-3xl font-bold">
-              {name}
-            </h2>
-            {pickText(detail?.genus, language) && (
-              <p className="text-sm text-muted">
-                {pickText(detail?.genus, language)}
-              </p>
-            )}
-            <div className="flex min-h-6 flex-wrap justify-center gap-1.5 sm:justify-start">
-              {shown?.types.map((type) => (
-                <TypeBadge key={type} type={type} />
-              ))}
-            </div>
-            {detail?.cry && <CryButton key={detail.cry} url={detail.cry} />}
-          </div>
-          {description.text && (
-            <div className="text-left sm:col-span-2 lg:col-span-1 lg:self-center">
-              <p className="leading-relaxed">{description.text}</p>
-              {description.fromGame && (
-                <p className="mt-1 text-xs text-muted">
-                  {t("detail.descriptionFrom")}{" "}
-                  {formatGame(description.fromGame, language)}
-                </p>
+        <div className="relative px-4 pb-6 pt-2 sm:px-8 sm:pb-8">
+          <header className="mb-6 grid grid-cols-1 items-center justify-items-center gap-6 text-center sm:grid-cols-[auto_1fr_auto] sm:justify-items-start sm:gap-x-8 sm:text-left">
+            <div className="relative size-40 sm:size-48">
+              {spriteView ? (
+                <Image
+                  src={gameSprite}
+                  alt=""
+                  width={96}
+                  height={96}
+                  unoptimized
+                  className="size-full object-contain [image-rendering:pixelated]"
+                />
+              ) : (
+                <Image
+                  src={artwork}
+                  alt=""
+                  width={475}
+                  height={475}
+                  sizes="192px"
+                  className="size-full object-contain"
+                  priority
+                />
               )}
-            </div>
-          )}
-        </header>
-
-        {detail ? (
-          <div
-            aria-busy={loading}
-            className={`transition-opacity ${loading ? "opacity-50" : ""}`}
-          >
-            {failed && (
-              <div
-                role="alert"
-                className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2 text-sm"
-              >
-                <span>{t("detail.error")}</span>
+              {gameSprite && game && (
                 <button
                   type="button"
-                  onClick={retry}
-                  className="rounded-md bg-accent-solid px-3 py-1 font-medium text-white"
+                  onClick={() => setShowSprite(!spriteView)}
+                  aria-pressed={spriteView}
+                  aria-label={t(
+                    spriteView ? "detail.showArtwork" : "detail.showSprite",
+                  )}
+                  title={
+                    spriteView
+                      ? t("detail.showArtwork")
+                      : formatGame(game, language)
+                  }
+                  className="absolute bottom-0 right-0 size-14 rounded-xl border border-border/60 bg-surface/90 p-1 shadow-sm hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
                 >
-                  {t("common.retry")}
+                  {spriteView ? (
+                    <Image
+                      src={artwork}
+                      alt=""
+                      width={80}
+                      height={80}
+                      sizes="80px"
+                      className="size-full object-contain"
+                    />
+                  ) : (
+                    <Image
+                      src={gameSprite}
+                      alt=""
+                      width={96}
+                      height={96}
+                      unoptimized
+                      className="size-full object-contain [image-rendering:pixelated]"
+                    />
+                  )}
                 </button>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-2 sm:items-start">
+              <h2 id="pokemon-dialog-title" className="text-3xl font-bold">
+                {name}
+              </h2>
+              {pickText(detail?.genus, language) && (
+                <p className="text-sm text-muted">
+                  {pickText(detail?.genus, language)}
+                </p>
+              )}
+              <div className="flex min-h-6 flex-wrap justify-center gap-1.5 sm:justify-start">
+                {shown?.types.map((type) => (
+                  <TypeBadge key={type} type={type} />
+                ))}
+              </div>
+            </div>
+            <div className="flex w-full flex-col gap-3 sm:w-60 sm:self-start lg:w-[26rem]">
+              {detail?.cry && (
+                <div className="flex justify-center sm:justify-end">
+                  <CryButton key={detail.cry} url={detail.cry} />
+                </div>
+              )}
+              {detail && <PokemonFacts detail={shown ?? detail} />}
+            </div>
+          </header>
+
+          <div className="mb-6 grid gap-6 lg:grid-cols-2 lg:gap-8">
+            {description.text && (
+              <div className={`${CARD} text-left`}>
+                <p className="leading-relaxed">{description.text}</p>
+                {description.fromGame && (
+                  <p className="mt-1 text-xs text-muted">
+                    {t("detail.descriptionFrom")}{" "}
+                    {formatGame(description.fromGame, language)}
+                  </p>
+                )}
               </div>
             )}
-            <PokemonDetails
-              detail={shown ?? detail}
-              moves={moves}
-              onSelectPokemon={selectInChain}
-              shinyIds={shinyIds}
-              onSetShiny={onSetShiny}
-              game={game}
-              forms={
+            {detail && (
+              <div className={CARD}>
                 <FormPicker
                   speciesName={detail.speciesName}
                   forms={detail.forms}
@@ -551,25 +536,56 @@ export function PokemonModal({
                   shiny={detail.shinyArtwork !== null ? shinyOn : null}
                   onToggleShiny={onToggleShiny}
                 />
-              }
-            />
+              </div>
+            )}
           </div>
-        ) : failed ? (
-          <div role="alert" className="flex flex-col items-center gap-3 py-8">
-            <p className="text-muted">{t("detail.error")}</p>
-            <button
-              type="button"
-              onClick={retry}
-              className="rounded-md bg-accent-solid px-4 py-2 font-medium text-white"
+
+          {detail ? (
+            <div
+              aria-busy={loading}
+              className={`transition-opacity ${loading ? "opacity-70" : ""}`}
             >
-              {t("common.retry")}
-            </button>
-          </div>
-        ) : (
-          <p className="py-8 text-center text-muted" aria-live="polite">
-            {t("detail.loading")}
-          </p>
-        )}
+              {failed && (
+                <div
+                  role="alert"
+                  className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2 text-sm"
+                >
+                  <span>{t("detail.error")}</span>
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="rounded-md bg-accent-solid px-3 py-1 font-medium text-white"
+                  >
+                    {t("common.retry")}
+                  </button>
+                </div>
+              )}
+              <PokemonDetails
+                detail={shown ?? detail}
+                moves={moves}
+                onSelectPokemon={selectInChain}
+                shinyIds={shinyIds}
+                onSetShiny={onSetShiny}
+                game={game}
+              />
+            </div>
+          ) : failed ? (
+            <div role="alert" className="flex flex-col items-center gap-3 py-8">
+              <p className="text-muted">{t("detail.error")}</p>
+              <button
+                type="button"
+                onClick={retry}
+                className="rounded-md bg-accent-solid px-4 py-2 font-medium text-white"
+              >
+                {t("common.retry")}
+              </button>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-muted" aria-live="polite">
+              {t("detail.loading")}
+            </p>
+          )}
+        </div>
       </div>
     </div>,
     document.body,

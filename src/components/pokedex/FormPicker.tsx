@@ -28,10 +28,8 @@ export function FormPicker({
 }: Props) {
   const { t } = useLanguage();
   return (
-    <section aria-label={t("detail.forms")} className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
-        {t("detail.forms")}
-      </h3>
+    <section aria-label={t("detail.forms")} className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-muted">{t("detail.forms")}</h3>
       <ul className="flex flex-wrap gap-2">
         {forms.length > 1 &&
           forms.map((form) => {
@@ -52,7 +50,9 @@ export function FormPicker({
                 >
                   {/* Bigger than the text line but pulled into the padding, so the chip
                       keeps the height of the others. */}
-                  {item && <ItemSprite item={item} size={28} className="-my-1" />}
+                  {item && (
+                    <ItemSprite item={item} size={28} className="-my-1" />
+                  )}
                   {form.isDefault
                     ? t("detail.formDefault")
                     : formatFormLabel(speciesName, form.name)}

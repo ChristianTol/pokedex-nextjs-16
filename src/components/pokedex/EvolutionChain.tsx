@@ -68,7 +68,8 @@ function Arrow({
       </span>
     </>
   );
-  const frame = "flex min-w-14 max-w-44 flex-col items-center gap-0.5 text-muted";
+  const frame =
+    "flex min-w-12 max-w-36 flex-col items-center gap-0.5 text-muted";
   // One way: the item above the arrow, the words below it. Several ways: each
   // keeps its picture and words together, the first above and the rest below.
   if (steps.length <= 1) {
@@ -112,7 +113,7 @@ function EvolutionButton({
       type="button"
       onClick={() => onSelect(node.id, node.formId)}
       aria-current={current ? "true" : undefined}
-      className={`flex w-28 flex-col items-center gap-1 rounded-xl border p-2 text-center transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-selected ${
+      className={`flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-selected ${
         current ? "border-selected bg-surface-muted" : "border-border"
       }`}
     >

@@ -13,6 +13,10 @@ import { PokemonMoves } from "./PokemonMoves";
 import { MAX_BASE_STAT, STAT_COLORS, STAT_LABELS } from "./stat-style";
 import { TypeMatchups } from "./TypeMatchups";
 
+/** The surface every block of the window sits on. */
+export const CARD =
+  "rounded-2xl border border-border/40 bg-surface/35 p-4 sm:p-5";
+
 function Section({
   title,
   children,
@@ -21,10 +25,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h3>
+    <section className={`flex min-w-0 flex-col gap-3 ${CARD}`}>
+      <h3 className="text-sm font-semibold text-muted">{title}</h3>
       {children}
     </section>
   );
@@ -57,10 +59,27 @@ function GenderBar({ gender }: { gender: PokemonDetail["gender"] }) {
   );
 }
 
+/** Gender and size, for beside the title. */
+export function PokemonFacts({ detail }: { detail: PokemonDetail }) {
+  const { language, t } = useLanguage();
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <Section title={t("detail.gender")}>
+        <GenderBar gender={detail.gender} />
+      </Section>
+      <Section title={`${t("detail.height")} / ${t("detail.weight")}`}>
+        <p className="text-lg font-semibold">
+          {formatHeight(detail.heightMeters, language)} ·{" "}
+          {formatWeight(detail.weightKg, language)}
+        </p>
+      </Section>
+    </div>
+  );
+}
+
 export function PokemonDetails({
   detail,
   onSelectPokemon,
-  forms,
   moves,
   shinyIds,
   onSetShiny,
@@ -68,8 +87,6 @@ export function PokemonDetails({
 }: {
   detail: PokemonDetail;
   onSelectPokemon: (id: number, formId?: number) => void;
-  /** Form picker, with the shiny switch. */
-  forms: React.ReactNode;
   moves: PokemonMovesState;
   /** Species that are shown shiny (the evolution chain shows each of its own). */
   shinyIds: ReadonlySet<number>;
@@ -83,30 +100,10 @@ export function PokemonDetails({
     return key ? t(key) : formatName(name);
   };
 
-  const gender = (
-    <Section title={t("detail.gender")}>
-      <GenderBar gender={detail.gender} />
-    </Section>
-  );
-  const size = (
-    <Section title={`${t("detail.height")} / ${t("detail.weight")}`}>
-      <p className="text-lg font-semibold">
-        {formatHeight(detail.heightMeters, language)} ·{" "}
-        {formatWeight(detail.weightKg, language)}
-      </p>
-    </Section>
-  );
   return (
     <div className="flex flex-col gap-6 lg:gap-8">
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        {forms}
-        <div className="grid gap-6 sm:grid-cols-2">
-          {gender}
-          {size}
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      {/* The evolution chain needs more room than the stats. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-8">
         <Section title={t("detail.stats")}>
           <ul className="flex flex-col gap-2">
             {detail.stats.map((stat) => (
@@ -129,19 +126,17 @@ export function PokemonDetails({
           </ul>
         </Section>
 
-        <div className="flex min-w-0 flex-col gap-6">
-          <Section title={t("detail.evolution")}>
-            <EvolutionChain
-              root={detail.evolution}
-              formName={detail.name}
-              currentId={detail.id}
-              onSelect={onSelectPokemon}
-              shinyIds={shinyIds}
-              onSetShiny={onSetShiny}
-              game={game}
-            />
-          </Section>
-        </div>
+        <Section title={t("detail.evolution")}>
+          <EvolutionChain
+            root={detail.evolution}
+            formName={detail.name}
+            currentId={detail.id}
+            onSelect={onSelectPokemon}
+            shinyIds={shinyIds}
+            onSetShiny={onSetShiny}
+            game={game}
+          />
+        </Section>
       </div>
 
       <Section title={t("detail.abilities")}>
@@ -152,7 +147,7 @@ export function PokemonDetails({
             {detail.abilities.map((ability) => (
               <li
                 key={ability.name}
-                className="rounded-lg border border-border bg-surface-muted/50 px-3 py-2"
+                className="rounded-xl bg-surface-muted/60 px-3 py-2"
               >
                 <p className="flex items-center gap-2 font-medium">
                   {pickText(ability.names, language) ??
