@@ -508,7 +508,12 @@ export function PokemonModal({
                   <CryButton key={detail.cry} url={detail.cry} />
                 </div>
               )}
-              {detail && <PokemonFacts detail={shown ?? detail} />}
+              {/* Phones get these below the forms instead. */}
+              {detail && (
+                <div className="hidden sm:block">
+                  <PokemonFacts detail={shown ?? detail} />
+                </div>
+              )}
             </div>
           </header>
 
@@ -536,6 +541,11 @@ export function PokemonModal({
                   shiny={detail.shinyArtwork !== null ? shinyOn : null}
                   onToggleShiny={onToggleShiny}
                 />
+              </div>
+            )}
+            {detail && (
+              <div className="sm:hidden">
+                <PokemonFacts detail={shown ?? detail} />
               </div>
             )}
           </div>
