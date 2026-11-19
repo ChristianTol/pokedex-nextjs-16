@@ -299,7 +299,7 @@ export function PokemonModal({
   const gameSprite =
     detail && game ? spriteForGame(detail.gameSprites, game, shinyOn) : null;
   // Which picture is large; a game without a sprite always shows the artwork.
-  const [showSprite, setShowSprite] = useState(false);
+  const [showSprite, setShowSprite] = useState(true);
   const spriteView = showSprite && gameSprite !== null;
   const artwork =
     (shinyOn ? detail?.shinyArtwork : detail?.artwork) ??

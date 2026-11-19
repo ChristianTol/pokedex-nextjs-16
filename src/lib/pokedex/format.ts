@@ -31,7 +31,7 @@ export function formatFormLabel(speciesName: string, formName: string): string {
 
 /** 25 -> "#025", 1025 -> "#1025" (at least three digits) */
 export function formatNumber(id: number): string {
-  return `#${String(id).padStart(3, "0")}`;
+  return `No. ${String(id).padStart(3, "0")}`;
 }
 
 /** 1.7 -> "1,7 m" (nl) or "1.7 m" (en) */
