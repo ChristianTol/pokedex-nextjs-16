@@ -60,8 +60,28 @@ const OPEN_MS = 340;
 const CLOSE_MS = 240;
 const EASING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
+/** How far (px) a finger must move sideways to count as a swipe. */
+const SWIPE_DISTANCE = 60;
+/** A swipe must be this many times more sideways than vertical. */
+const SWIPE_RATIO = 1.5;
+/** How far (px) a finger moves before it is clear whether it is a swipe. */
+const SWIPE_START = 8;
+/** How much of the drag the window follows when there is no neighbour. */
+const SWIPE_RESISTANCE = 0.25;
+const SWIPE_MS = 180;
+
 const FOCUSABLE =
   'button:not(:disabled), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** Whether the element, or a parent below `root`, scrolls sideways itself. */
+function scrollsSideways(element: HTMLElement | null, root: HTMLElement) {
+  for (let el = element; el && el !== root; el = el.parentElement) {
+    if (el.scrollWidth <= el.clientWidth) continue;
+    const overflowX = getComputedStyle(el).overflowX;
+    if (overflowX === "auto" || overflowX === "scroll") return true;
+  }
+  return false;
+}
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -126,6 +146,8 @@ export function PokemonModal({
   const backdropRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const closingRef = useRef(false);
+  // True while the window slides after a swipe; a new swipe must wait.
+  const busyRef = useRef(false);
   const { language, t } = useLanguage();
   // The chosen form belongs to one species; moving to another one resets it.
   const [formChoice, setFormChoice] = useState<{
@@ -270,6 +292,156 @@ export function PokemonModal({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [requestClose, previous, next, onSelectPokemon]);
+
+  // Swiping sideways goes to the next or previous Pokémon, like the arrows in
+  // the header: the window follows the finger and slides away on release.
+  // Not when it would also scroll something sideways (the evolution chain, a
+  // wide table) or when the fields use the gesture. These are native
+  // listeners because `touchmove` has to be able to stop the page scrolling.
+  useEffect(() => {
+    const found = panelRef.current;
+    if (!found) return;
+    const panel: HTMLDivElement = found;
+    let swipe: { x: number; y: number; dragging: boolean } | null = null;
+
+    const look = () => ({
+      transform: panel.style.transform || "none",
+      opacity: panel.style.opacity || "1",
+    });
+    const clear = () => {
+      panel.style.transform = "";
+      panel.style.opacity = "";
+    };
+    const springBack = () => {
+      const from = look();
+      clear();
+      busyRef.current = true;
+      panel
+        .animate([from, { transform: "none", opacity: "1" }], {
+          duration: SWIPE_MS,
+          easing: EASING,
+        })
+        .finished.catch(() => {})
+        .finally(() => {
+          busyRef.current = false;
+        });
+    };
+    const slideTo = (neighbor: Neighbor, direction: -1 | 1) => {
+      if (prefersReducedMotion()) {
+        clear();
+        onSelectPokemon(neighbor.id);
+        return;
+      }
+      const from = look();
+      clear();
+      busyRef.current = true;
+      // Out the way the finger went, in from the other side.
+      const out = panel.animate(
+        [
+          from,
+          {
+            transform: `translateX(${direction * window.innerWidth * 0.6}px)`,
+            opacity: "0",
+          },
+        ],
+        { duration: SWIPE_MS, easing: "ease-in", fill: "forwards" },
+      );
+      out.finished
+        .then(() => {
+          out.cancel();
+          onSelectPokemon(neighbor.id);
+          return panel.animate(
+            [
+              {
+                transform: `translateX(${-direction * window.innerWidth * 0.3}px)`,
+                opacity: "0",
+              },
+              { transform: "none", opacity: "1" },
+            ],
+            { duration: SWIPE_MS, easing: EASING },
+          ).finished;
+        })
+        .catch(() => {})
+        .finally(() => {
+          busyRef.current = false;
+        });
+    };
+
+    function onTouchStart(event: TouchEvent) {
+      const target = event.target as HTMLElement;
+      const taken =
+        busyRef.current ||
+        closingRef.current ||
+        event.touches.length !== 1 ||
+        target.closest('input, select, textarea, [role="tab"]') !== null ||
+        scrollsSideways(target, panel);
+      const touch = event.touches[0];
+      swipe = taken
+        ? null
+        : { x: touch.clientX, y: touch.clientY, dragging: false };
+    }
+
+    function onTouchMove(event: TouchEvent) {
+      if (!swipe) return;
+      if (event.touches.length !== 1) {
+        // A second finger (a pinch) cancels the swipe.
+        if (swipe.dragging) springBack();
+        swipe = null;
+        return;
+      }
+      const dx = event.touches[0].clientX - swipe.x;
+      const dy = event.touches[0].clientY - swipe.y;
+      if (!swipe.dragging) {
+        if (Math.abs(dx) < SWIPE_START && Math.abs(dy) < SWIPE_START) return;
+        if (Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) {
+          // Mostly vertical: an ordinary scroll.
+          swipe = null;
+          return;
+        }
+        swipe.dragging = true;
+      }
+      event.preventDefault();
+      // Without a neighbour in that direction the window only gives a little.
+      const neighbor = dx < 0 ? next : previous;
+      const offset = neighbor ? dx : dx * SWIPE_RESISTANCE;
+      panel.style.transform = `translateX(${offset}px)`;
+      panel.style.opacity = String(
+        1 - Math.min(Math.abs(offset) / panel.offsetWidth, 1) * 0.5,
+      );
+    }
+
+    function onTouchEnd(event: TouchEvent) {
+      const finished = swipe;
+      swipe = null;
+      if (!finished?.dragging) return;
+      const dx = event.changedTouches[0].clientX - finished.x;
+      const neighbor = dx < 0 ? next : previous;
+      if (neighbor && Math.abs(dx) >= SWIPE_DISTANCE) {
+        // Dragging left turns the page forward, like a book.
+        slideTo(neighbor, dx < 0 ? -1 : 1);
+      } else if (prefersReducedMotion()) {
+        clear();
+      } else {
+        springBack();
+      }
+    }
+
+    function onTouchCancel() {
+      if (swipe?.dragging) springBack();
+      swipe = null;
+    }
+
+    panel.addEventListener("touchstart", onTouchStart, { passive: true });
+    panel.addEventListener("touchmove", onTouchMove, { passive: false });
+    panel.addEventListener("touchend", onTouchEnd, { passive: true });
+    panel.addEventListener("touchcancel", onTouchCancel, { passive: true });
+    return () => {
+      panel.removeEventListener("touchstart", onTouchStart);
+      panel.removeEventListener("touchmove", onTouchMove);
+      panel.removeEventListener("touchend", onTouchEnd);
+      panel.removeEventListener("touchcancel", onTouchCancel);
+    };
+  }, [previous, next, onSelectPokemon]);
 
   // A newly selected Pokémon starts at the top of the window.
   useEffect(() => {
