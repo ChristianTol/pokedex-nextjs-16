@@ -189,8 +189,18 @@ export function EvolutionChain({
     () => evolutionForForm(familyRoot, formName, currentId),
     [familyRoot, formName, currentId],
   );
+  // A Pokémon that does not evolve is only shown as its own block; the
+  // whole-family shiny button would just repeat the one in the window.
   if (root.evolvesTo.length === 0) {
-    return <p className="text-sm text-muted">{t("detail.noEvolution")}</p>;
+    return (
+      <Branch
+        node={root}
+        currentId={currentId}
+        onSelect={onSelect}
+        shinyIds={shinyIds}
+        game={game}
+      />
+    );
   }
   const family = evolutionIds(root);
   const allShiny = family.every((id) => shinyIds.has(id));
