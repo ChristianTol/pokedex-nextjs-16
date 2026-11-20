@@ -52,9 +52,12 @@ function ItemSprites({ items }: { items: string[] }) {
 function Arrow({
   methods,
   game,
+  fixedWidth,
 }: {
   methods: EvolutionNode["methods"];
   game: string | null;
+  /** Siblings share one width so the cards after their arrows line up. */
+  fixedWidth: boolean;
 }) {
   const { t, tOptional, language } = useLanguage();
   const steps = evolutionSteps(methods, game, { t, tOptional, language });
@@ -68,8 +71,11 @@ function Arrow({
       </span>
     </>
   );
-  const frame =
-    "flex min-w-12 max-w-36 flex-col items-center gap-0.5 text-muted";
+  const frame = `flex flex-col items-center gap-0.5 text-muted ${
+    fixedWidth
+      ? "w-24 shrink-0 max-sm:grow max-sm:justify-end sm:w-28"
+      : "min-w-12 max-w-36"
+  }`;
   // One way: the item above the arrow, the words below it. Several ways: each
   // keeps its picture and words together, the first above and the rest below.
   if (steps.length <= 1) {
@@ -88,6 +94,29 @@ function Arrow({
       <Step step={first} />
       <div className="flex flex-col items-center">{arrow}</div>
       {rest.map((step) => (
+        <Step key={step.label} step={step} />
+      ))}
+    </div>
+  );
+}
+
+/** From this many evolutions on, they are shown as a grid instead of a column. */
+const GRID_FROM = 4;
+
+/** The ways of evolving as a small caption above a card in the grid. */
+function Method({
+  methods,
+  game,
+}: {
+  methods: EvolutionNode["methods"];
+  game: string | null;
+}) {
+  const { t, tOptional, language } = useLanguage();
+  const steps = evolutionSteps(methods, game, { t, tOptional, language });
+  if (steps.length === 0) return null;
+  return (
+    <div className="flex flex-col items-center gap-1 text-muted">
+      {steps.map((step) => (
         <Step key={step.label} step={step} />
       ))}
     </div>
@@ -152,14 +181,46 @@ function Branch({
         onSelect={onSelect}
         shiny={shinyIds.has(node.id)}
       />
-      {node.evolvesTo.length > 0 && (
-        <div className="flex flex-col gap-3">
+      {node.evolvesTo.length >= GRID_FROM && (
+        <>
+          <div aria-hidden="true" className="text-xl text-muted">
+            <span className="hidden sm:inline">→</span>
+            <span className="sm:hidden">↓</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {node.evolvesTo.map((child) => (
+              <div key={child.id} className="flex flex-col items-center gap-1">
+                <Method methods={child.methods} game={game} />
+                <Branch
+                  node={child}
+                  currentId={currentId}
+                  onSelect={onSelect}
+                  shinyIds={shinyIds}
+                  game={game}
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {node.evolvesTo.length > 0 && node.evolvesTo.length < GRID_FROM && (
+        <div
+          className={`flex gap-3 ${
+            node.evolvesTo.length > 1
+              ? "flex-row flex-wrap justify-center sm:flex-col sm:flex-nowrap sm:justify-start"
+              : "flex-col"
+          }`}
+        >
           {node.evolvesTo.map((child) => (
             <div
               key={child.id}
               className="flex flex-col items-center gap-2 sm:flex-row"
             >
-              <Arrow methods={child.methods} game={game} />
+              <Arrow
+                methods={child.methods}
+                game={game}
+                fixedWidth={node.evolvesTo.length > 1}
+              />
               <Branch
                 node={child}
                 currentId={currentId}
