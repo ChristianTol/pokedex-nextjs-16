@@ -32,6 +32,11 @@ import { CryButton } from "./CryButton";
 import { FavoriteButton } from "./FavoriteButton";
 import { FormPicker } from "./FormPicker";
 import { CARD, PokemonDetails, PokemonFacts } from "./PokemonDetails";
+import {
+  DetailsSkeleton,
+  FactsSkeleton,
+  IntroSkeleton,
+} from "./PokemonSkeleton";
 import { TypeBadge } from "./TypeBadge";
 
 /** The Pokémon before or after this one in the list. */
@@ -499,7 +504,7 @@ export function PokemonModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="pokemon-dialog-title"
-        className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-surface shadow-2xl lg:max-w-5xl"
+        className="relative h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-surface shadow-2xl lg:max-w-5xl"
         style={{
           background: typeBackground(shown?.types ?? initialTypes ?? []),
         }}
@@ -665,11 +670,10 @@ export function PokemonModal({
               <h2 id="pokemon-dialog-title" className="text-3xl font-bold">
                 {name}
               </h2>
-              {pickText(detail?.genus, language) && (
-                <p className="text-sm text-muted">
-                  {pickText(detail?.genus, language)}
-                </p>
-              )}
+              {/* Always there, so the types do not drop a line when it loads. */}
+              <p className="min-h-5 text-sm text-muted">
+                {pickText(detail?.genus, language)}
+              </p>
               <div className="flex min-h-6 flex-wrap justify-center gap-1.5 sm:justify-start">
                 {shown?.types.map((type) => (
                   <TypeBadge key={type} type={type} />
@@ -686,6 +690,11 @@ export function PokemonModal({
               {detail && (
                 <div className="hidden sm:block">
                   <PokemonFacts detail={shown ?? detail} />
+                </div>
+              )}
+              {!detail && !failed && (
+                <div className="hidden sm:block">
+                  <FactsSkeleton />
                 </div>
               )}
             </div>
@@ -722,6 +731,7 @@ export function PokemonModal({
                 <PokemonFacts detail={shown ?? detail} />
               </div>
             )}
+            {!detail && !failed && <IntroSkeleton />}
           </div>
 
           {detail ? (
@@ -765,9 +775,7 @@ export function PokemonModal({
               </button>
             </div>
           ) : (
-            <p className="py-8 text-center text-muted" aria-live="polite">
-              {t("detail.loading")}
-            </p>
+            <DetailsSkeleton />
           )}
         </div>
       </div>
