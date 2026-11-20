@@ -69,15 +69,15 @@ describe("formatName", () => {
 
 describe("formatNumber", () => {
   it("pads to three digits", () => {
-    expect(formatNumber(1)).toBe("#001");
-    expect(formatNumber(25)).toBe("#025");
-    expect(formatNumber(151)).toBe("#151");
+    expect(formatNumber(1)).toBe("No. 001");
+    expect(formatNumber(25)).toBe("No. 025");
+    expect(formatNumber(151)).toBe("No. 151");
   });
 
   it("keeps counting after 999 without extra zeros", () => {
-    expect(formatNumber(999)).toBe("#999");
-    expect(formatNumber(1000)).toBe("#1000");
-    expect(formatNumber(1025)).toBe("#1025");
+    expect(formatNumber(999)).toBe("No. 999");
+    expect(formatNumber(1000)).toBe("No. 1000");
+    expect(formatNumber(1025)).toBe("No. 1025");
   });
 });
 
