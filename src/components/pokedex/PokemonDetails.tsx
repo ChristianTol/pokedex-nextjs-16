@@ -8,7 +8,7 @@ import {
   formatPercentage,
   formatWeight,
 } from "@/lib/pokedex/format";
-import { EvolutionChain } from "./EvolutionChain";
+import { EvolutionChain, FamilyShinyButton } from "./EvolutionChain";
 import { PokemonMoves } from "./PokemonMoves";
 import { MAX_BASE_STAT, STAT_COLORS, STAT_LABELS } from "./stat-style";
 import { TypeMatchups } from "./TypeMatchups";
@@ -19,14 +19,24 @@ export const CARD =
 
 function Section({
   title,
+  action,
   children,
 }: {
   title: string;
+  /** Sits at the right of the title; the header keeps its height without it. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className={`flex min-w-0 flex-col gap-3 ${CARD}`}>
-      <h3 className="text-sm font-semibold text-muted">{title}</h3>
+      {action === undefined ? (
+        <h3 className="text-sm font-semibold text-muted">{title}</h3>
+      ) : (
+        <div className="flex sm:min-h-7.5 items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-muted">{title}</h3>
+          {action}
+        </div>
+      )}
       {children}
     </section>
   );
@@ -126,7 +136,19 @@ export function PokemonDetails({
           </ul>
         </Section>
 
-        <Section title={t("detail.evolution")}>
+        <Section
+          title={t("detail.evolution")}
+          action={
+            <FamilyShinyButton
+              root={detail.evolution}
+              formName={detail.name}
+              currentId={detail.id}
+              shinyIds={shinyIds}
+              onSetShiny={onSetShiny}
+              className="hidden sm:inline-flex"
+            />
+          }
+        >
           <EvolutionChain
             root={detail.evolution}
             formName={detail.name}

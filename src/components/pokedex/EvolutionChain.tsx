@@ -236,6 +236,57 @@ function Branch({
   );
 }
 
+/** The pokémon of the family on screen, for the form that is shown. */
+function useFamilyRoot(
+  familyRoot: EvolutionNode,
+  formName: string,
+  currentId: number,
+) {
+  return useMemo(
+    () => evolutionForForm(familyRoot, formName, currentId),
+    [familyRoot, formName, currentId],
+  );
+}
+
+/**
+ * Turns shiny on or off for the whole family. A Pokémon that does not evolve
+ * gets nothing; the button would just repeat the one in the window.
+ */
+export function FamilyShinyButton({
+  root: familyRoot,
+  formName,
+  currentId,
+  shinyIds,
+  onSetShiny,
+  className,
+}: Pick<
+  Props,
+  "root" | "formName" | "currentId" | "shinyIds" | "onSetShiny"
+> & {
+  /** Where and when the button is shown (its display); the window uses two. */
+  className: string;
+}) {
+  const { t } = useLanguage();
+  const root = useFamilyRoot(familyRoot, formName, currentId);
+  if (root.evolvesTo.length === 0) return null;
+  const family = evolutionIds(root);
+  const allShiny = family.every((id) => shinyIds.has(id));
+  return (
+    <button
+      type="button"
+      onClick={() => onSetShiny(family, !allShiny)}
+      className={`items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-normal transition-colors focus-visible:outline-2 focus-visible:outline-selected ${className} ${
+        allShiny
+          ? "border-selected bg-selected text-selected-text"
+          : "border-border hover:bg-surface-muted"
+      }`}
+    >
+      <SparkleIcon />
+      {t(allShiny ? "evolution.normalFamily" : "evolution.shinyFamily")}
+    </button>
+  );
+}
+
 export function EvolutionChain({
   root: familyRoot,
   formName,
@@ -245,40 +296,19 @@ export function EvolutionChain({
   onSetShiny,
   game,
 }: Props) {
-  const { t } = useLanguage();
-  const root = useMemo(
-    () => evolutionForForm(familyRoot, formName, currentId),
-    [familyRoot, formName, currentId],
-  );
-  // A Pokémon that does not evolve is only shown as its own block; the
-  // whole-family shiny button would just repeat the one in the window.
-  if (root.evolvesTo.length === 0) {
-    return (
-      <Branch
-        node={root}
-        currentId={currentId}
-        onSelect={onSelect}
-        shinyIds={shinyIds}
-        game={game}
-      />
-    );
-  }
-  const family = evolutionIds(root);
-  const allShiny = family.every((id) => shinyIds.has(id));
+  const root = useFamilyRoot(familyRoot, formName, currentId);
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => onSetShiny(family, !allShiny)}
-        className={`inline-flex items-center gap-1.5 self-start rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-selected ${
-          allShiny
-            ? "border-selected bg-selected text-selected-text"
-            : "border-border hover:bg-surface-muted"
-        }`}
-      >
-        <SparkleIcon />
-        {t(allShiny ? "evolution.normalFamily" : "evolution.shinyFamily")}
-      </button>
+      {/* On a phone the button sits above the chain; from sm up it is in the
+          header of the section. */}
+      <FamilyShinyButton
+        root={familyRoot}
+        formName={formName}
+        currentId={currentId}
+        shinyIds={shinyIds}
+        onSetShiny={onSetShiny}
+        className="inline-flex self-start sm:hidden"
+      />
       <div className="overflow-x-auto pb-1">
         <Branch
           node={root}

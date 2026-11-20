@@ -15,14 +15,21 @@ function Bar({ className }: { className: string }) {
 
 function SectionSkeleton({
   title,
+  tallHeader = false,
   children,
 }: {
   title: string;
+  /** Matches a section whose header holds a button, so nothing jumps. */
+  tallHeader?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section className={`flex min-w-0 flex-col gap-3 ${CARD}`}>
-      <h3 className="text-sm font-semibold text-muted">{title}</h3>
+      <h3
+        className={`text-sm font-semibold text-muted ${tallHeader ? "sm:flex sm:min-h-7.5 sm:items-center" : ""}`}
+      >
+        {title}
+      </h3>
       {children}
     </section>
   );
@@ -86,7 +93,7 @@ export function DetailsSkeleton() {
             ))}
           </ul>
         </SectionSkeleton>
-        <SectionSkeleton title={t("detail.evolution")}>
+        <SectionSkeleton title={t("detail.evolution")} tallHeader>
           <Bar className="h-32 w-full" />
         </SectionSkeleton>
       </div>
