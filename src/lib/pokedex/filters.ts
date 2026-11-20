@@ -1,5 +1,10 @@
 import { DEFAULT_SORT, SORT_OPTIONS, type SortOption } from "./query";
-import { SPECIAL_KINDS, type SpecialKind } from "./stats-index";
+import {
+  FORMS_FILTERS,
+  SPECIAL_KINDS,
+  type FormsFilter,
+  type SpecialKind,
+} from "./stats-index";
 
 export type Filters = {
   search: string;
@@ -11,6 +16,8 @@ export type Filters = {
   favorites: boolean;
   /** Only legendary, mythical or baby Pokémon; null shows all. */
   special: SpecialKind | null;
+  /** Only Pokémon with a Mega, other forms or a Gigantamax form; null shows all. */
+  forms: FormsFilter | null;
   sort: SortOption;
 };
 
@@ -20,6 +27,7 @@ export const EMPTY_FILTERS: Filters = {
   region: null,
   favorites: false,
   special: null,
+  forms: null,
   sort: DEFAULT_SORT,
 };
 
@@ -35,12 +43,14 @@ export function parseFilters(
   const region = params.get("region");
   const sort = params.get("sort");
   const special = params.get("special");
+  const forms = params.get("forms");
   return {
     search: params.get("q") ?? "",
     type: type !== null && validTypes.includes(type) ? type : null,
     region: region !== null && validRegions.includes(region) ? region : null,
     favorites: params.get("fav") === "1",
     special: SPECIAL_KINDS.find((kind) => kind === special) ?? null,
+    forms: FORMS_FILTERS.find((filter) => filter === forms) ?? null,
     sort: SORT_OPTIONS.find((option) => option === sort) ?? DEFAULT_SORT,
   };
 }
@@ -53,6 +63,7 @@ export function serializeFilters(filters: Filters): string {
   if (filters.region) params.set("region", filters.region);
   if (filters.favorites) params.set("fav", "1");
   if (filters.special) params.set("special", filters.special);
+  if (filters.forms) params.set("forms", filters.forms);
   if (filters.sort !== DEFAULT_SORT) params.set("sort", filters.sort);
   const query = params.toString();
   return query === "" ? "" : `?${query}`;

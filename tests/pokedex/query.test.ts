@@ -168,12 +168,12 @@ describe("queryPokedex with names", () => {
 });
 
 describe("sorting and filtering on stats", () => {
-  // hp, attack, defense, special attack, special defense, speed, kind
+  // hp, attack, defense, special attack, special defense, speed, kind, forms, gigantamax
   const stats = new Map([
-    [1, decodeRow([45, 49, 49, 65, 65, 45, 0])],
-    [4, decodeRow([39, 52, 43, 60, 50, 65, 0])],
-    [25, decodeRow([35, 55, 40, 50, 50, 90, 0])],
-    [250, decodeRow([106, 130, 90, 110, 154, 90, 1])],
+    [1, decodeRow([45, 49, 49, 65, 65, 45, 0, 2, 1])],
+    [4, decodeRow([39, 52, 43, 60, 50, 65, 0, 3, 0])],
+    [25, decodeRow([35, 55, 40, 50, 50, 90, 0, 1, 1])],
+    [250, decodeRow([106, 130, 90, 110, 154, 90, 1, 0, 0])],
   ]);
   const run = (query: Partial<Parameters<typeof queryPokedex>[1]>) =>
     ids(queryPokedex(entries, { ...base, stats, ...query }));
@@ -203,6 +203,19 @@ describe("sorting and filtering on stats", () => {
     expect(run({ special: "legendary" })).toEqual([250]);
     expect(run({ special: "baby" })).toEqual([]);
     expect(run({ special: null })).toHaveLength(5);
+  });
+
+  it("filters on forms, leaving out Pokémon without forms and unknown ones", () => {
+    // "mega" holds every Pokémon with a Mega, also those with other forms.
+    expect(run({ forms: "mega" })).toEqual([1, 4]);
+    expect(run({ forms: "with-mega" })).toEqual([1]);
+    expect(run({ forms: "without-mega" })).toEqual([25]);
+    expect(run({ forms: "gigantamax" })).toEqual([1, 25]);
+    expect(run({ forms: null })).toHaveLength(5);
+  });
+
+  it("combines the forms and special filters", () => {
+    expect(run({ forms: "mega", special: "legendary" })).toEqual([]);
   });
 });
 

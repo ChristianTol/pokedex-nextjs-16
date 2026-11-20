@@ -1,7 +1,12 @@
 import type { LocalizedText } from "@/lib/i18n/languages";
 import type { PokemonIndexEntry } from "@/lib/pokeapi/index-list";
 
-import type { IndexedPokemon, SpecialKind } from "./stats-index";
+import {
+  matchesForms,
+  type FormsFilter,
+  type IndexedPokemon,
+  type SpecialKind,
+} from "./stats-index";
 
 /** What can be sorted on besides number and name; "total" is the sum of the stats. */
 export const STAT_SORTS = [
@@ -54,6 +59,8 @@ export type PokedexQuery = {
   sort: SortOption;
   /** Only legendary, mythical or baby Pokémon (needs `stats`); null shows all. */
   special?: SpecialKind | null;
+  /** Only Pokémon with a Mega, other forms or a Gigantamax form (needs `stats`); null shows all. */
+  forms?: FormsFilter | null;
   /**
    * Stats and special kind by species id. A Pokémon missing from it (newer
    * than the index) is listed last when sorting on a stat and left out when
@@ -135,6 +142,7 @@ export function queryPokedex(
     favoriteIds,
     sort,
     special = null,
+    forms = null,
     stats,
     names,
   }: PokedexQuery,
@@ -145,6 +153,9 @@ export function queryPokedex(
     .filter((entry) => favoriteIds === null || favoriteIds.has(entry.id))
     .filter(
       (entry) => special === null || stats?.get(entry.id)?.special === special,
+    )
+    .filter(
+      (entry) => forms === null || matchesForms(stats?.get(entry.id), forms),
     )
     .filter((entry) => matchesSearch(entry, search, names?.[entry.id]))
     .sort(compare(sort, stats));

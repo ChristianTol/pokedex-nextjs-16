@@ -14,7 +14,12 @@ import {
   statSortOf,
   type SortOption,
 } from "@/lib/pokedex/query";
-import { SPECIAL_KINDS, type SpecialKind } from "@/lib/pokedex/stats-index";
+import {
+  FORMS_FILTERS,
+  SPECIAL_KINDS,
+  type FormsFilter,
+  type SpecialKind,
+} from "@/lib/pokedex/stats-index";
 
 type Props = {
   filters: Filters;
@@ -132,7 +137,7 @@ export function FilterBar({
     />
   );
 
-  // The four dropdowns, for the bar (md and up) and for the sheet (phones).
+  // The five dropdowns, for the bar (md and up) and for the sheet (phones).
   const dropdowns = (inSheet: boolean) => {
     const span = inSheet ? undefined : "col-span-2 md:col-span-1";
     return (
@@ -186,6 +191,24 @@ export function FilterBar({
             {SPECIAL_KINDS.map((kind) => (
               <option key={kind} value={kind}>
                 {t(`special.${kind}`)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={t("filters.forms")} visible={inSheet}>
+          <Select
+            className="w-full"
+            value={filters.forms ?? ""}
+            onChange={(event) =>
+              onChange({
+                forms: (event.target.value || null) as FormsFilter | null,
+              })
+            }
+          >
+            <option value="">{t("filters.allForms")}</option>
+            {FORMS_FILTERS.map((filter) => (
+              <option key={filter} value={filter}>
+                {t(`forms.${filter}`)}
               </option>
             ))}
           </Select>
@@ -247,6 +270,14 @@ export function FilterBar({
       text: t(`special.${filters.special}`),
       label: t(`special.${filters.special}`),
       remove: () => onChange({ special: null }),
+    });
+  }
+  if (filters.forms) {
+    chips.push({
+      key: "forms",
+      text: t(`forms.${filters.forms}`),
+      label: t(`forms.${filters.forms}`),
+      remove: () => onChange({ forms: null }),
     });
   }
   if (filters.favorites) {
@@ -331,7 +362,7 @@ export function FilterBar({
 
       {/* Wider screens: everything in the bar. */}
       <div className="hidden flex-col gap-2 md:flex">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.4fr] gap-2">
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1.4fr] gap-2">
           <Field label={t("filters.search")}>{search}</Field>
           {dropdowns(false)}
         </div>

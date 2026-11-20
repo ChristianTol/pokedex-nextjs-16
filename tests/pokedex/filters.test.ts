@@ -21,7 +21,7 @@ describe("parseFilters", () => {
   it("reads valid values", () => {
     expect(
       parse(
-        "q=char&type=fire&region=kanto&fav=1&special=mythical&sort=name-desc",
+        "q=char&type=fire&region=kanto&fav=1&special=mythical&forms=mega&sort=name-desc",
       ),
     ).toEqual({
       search: "char",
@@ -29,6 +29,7 @@ describe("parseFilters", () => {
       region: "kanto",
       favorites: true,
       special: "mythical",
+      forms: "mega",
       sort: "name-desc",
     });
   });
@@ -69,11 +70,26 @@ describe("serializeFilters", () => {
       region: "johto",
       favorites: true,
       special: "legendary" as const,
+      forms: "with-mega" as const,
       sort: "speed-desc" as const,
     };
     const query = serializeFilters(filters);
     expect(parse(query)).toEqual(filters);
     expect(hasActiveFilters(filters)).toBe(true);
+  });
+});
+
+describe("the forms filter", () => {
+  it("reads a known value and ignores an unknown one", () => {
+    expect(parse("?forms=gigantamax").forms).toBe("gigantamax");
+    expect(parse("?forms=without-mega").forms).toBe("without-mega");
+    expect(parse("?forms=nope").forms).toBeNull();
+  });
+
+  it("is written to the url", () => {
+    expect(serializeFilters({ ...EMPTY_FILTERS, forms: "with-mega" })).toBe(
+      "?forms=with-mega",
+    );
   });
 });
 

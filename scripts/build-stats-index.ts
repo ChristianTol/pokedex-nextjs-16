@@ -1,6 +1,7 @@
 /**
  * Builds `src/data/pokemon-stats.json`: for every Pokémon its base stats and
- * whether it is legendary, mythical or a baby. PokéAPI has no bulk endpoint
+ * whether it is legendary, mythical or a baby, and whether it has other forms
+ * a Mega Evolution or Primal Reversion, or a Gigantamax form. PokéAPI has no bulk endpoint
  * for these, so this takes two requests per Pokémon (about 2000). Run it
  * again when new Pokémon have come out:
  *
@@ -10,6 +11,7 @@ import { writeFile } from "node:fs/promises";
 import {
   INDEXED_STATS,
   encodeRow,
+  type FormsLevel,
   type IndexedStat,
   type SpecialKind,
   type StatsIndexFile,
@@ -25,7 +27,7 @@ type Species = {
   is_legendary: boolean;
   is_mythical: boolean;
   is_baby: boolean;
-  varieties: { is_default: boolean; pokemon: { url: string } }[];
+  varieties: { is_default: boolean; pokemon: { name: string; url: string } }[];
 };
 type PokemonResponse = {
   stats: { base_stat: number; stat: { name: string } }[];
@@ -53,6 +55,23 @@ function specialKind(species: Species): SpecialKind | null {
   return null;
 }
 
+/** Mega and Primal slugs look like "charizard-mega-x" and "groudon-primal". */
+function formsLevel(species: Species): FormsLevel {
+  const others = species.varieties.filter((variety) => !variety.is_default);
+  if (others.length === 0) return "none";
+  const isMega = (variety: (typeof others)[number]) =>
+    /-(mega|primal)(-|$)/.test(variety.pokemon.name);
+  if (!others.some(isMega)) return "forms";
+  return others.every(isMega) ? "mega-only" : "mega";
+}
+
+/** Gigantamax slugs look like "charizard-gmax". */
+function hasGigantamax(species: Species): boolean {
+  return species.varieties.some((variety) =>
+    variety.pokemon.name.endsWith("-gmax"),
+  );
+}
+
 async function rowFor(id: number) {
   const species = await get<Species>(`${BASE_URL}/pokemon-species/${id}`);
   const standard =
@@ -69,7 +88,15 @@ async function rowFor(id: number) {
       throw new Error(`Pokémon ${id} has no ${name} stat`);
     }
   }
-  return [id, encodeRow(stats, specialKind(species))] as const;
+  return [
+    id,
+    encodeRow(
+      stats,
+      specialKind(species),
+      formsLevel(species),
+      hasGigantamax(species),
+    ),
+  ] as const;
 }
 
 const list = await get<{ results: { url: string }[] }>(
