@@ -50,6 +50,15 @@ export function FactsSkeleton() {
   );
 }
 
+/** The button that plays the cry, the same size as the real one. */
+export function CrySkeleton() {
+  return (
+    <div className="flex justify-center sm:justify-end">
+      <div aria-hidden="true" className="skeleton h-7 w-28 rounded-full" />
+    </div>
+  );
+}
+
 /** The description and the forms, in the grid under the title. */
 export function IntroSkeleton() {
   return (

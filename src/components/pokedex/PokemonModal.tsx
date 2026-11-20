@@ -33,6 +33,7 @@ import { FavoriteButton } from "./FavoriteButton";
 import { FormPicker } from "./FormPicker";
 import { CARD, PokemonDetails, PokemonFacts } from "./PokemonDetails";
 import {
+  CrySkeleton,
   DetailsSkeleton,
   FactsSkeleton,
   IntroSkeleton,
@@ -533,6 +534,12 @@ export function PokemonModal({
             <div className="hidden shrink-0 sm:block">
               <LanguageSelect compact />
             </div>
+            {!detail && !failed && (
+              <div aria-hidden="true" className="contents">
+                <div className="skeleton size-9 rounded-full sm:hidden" />
+                <div className="skeleton hidden h-9 w-64 rounded-lg sm:block" />
+              </div>
+            )}
             {game && detail && (
               <>
                 <IconSelect
@@ -681,6 +688,7 @@ export function PokemonModal({
               </div>
             </div>
             <div className="flex w-full flex-col gap-3 sm:w-60 sm:self-start lg:w-[26rem]">
+              {!detail && !failed && <CrySkeleton />}
               {detail?.cry && (
                 <div className="flex justify-center sm:justify-end">
                   <CryButton key={detail.cry} url={detail.cry} />
