@@ -353,7 +353,7 @@ export function PokemonModal({
             <div className="sm:hidden">
               <LanguageSelect round />
             </div>
-            <div className="hidden sm:block">
+            <div className="hidden shrink-0 sm:block">
               <LanguageSelect compact />
             </div>
             {game && detail && (
@@ -391,11 +391,13 @@ export function PokemonModal({
                     </option>
                   ))}
                 </IconSelect>
-                <div className="hidden sm:block">
+                {/* A fixed width, so the header does not jump when a form has
+                    fewer (or shorter named) games. */}
+                <div className="hidden min-w-0 sm:block sm:w-64">
                   <Select
                     compact
                     aria-label={t("moves.game")}
-                    className="h-9 w-full sm:max-w-64"
+                    className="h-9 w-full"
                     value={game}
                     onChange={(event) => setPreferredGame(event.target.value)}
                   >
