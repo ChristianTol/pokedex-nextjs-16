@@ -312,6 +312,7 @@ export function PokedexList({ entries, types, regions }: Props) {
           previous={around.previous}
           next={around.next}
           initialTypes={summaries[selected.id]?.types}
+          initialNames={summaries[selected.id]?.names}
           shinyIds={shinyIds}
           onToggleShiny={() => toggleShiny(selected.id)}
           onSetShiny={setShiny}

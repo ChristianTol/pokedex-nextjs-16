@@ -50,6 +50,19 @@ export function FactsSkeleton() {
   );
 }
 
+/** The kind of Pokémon and its types, under the name. */
+export function TitleSkeleton() {
+  return (
+    <>
+      <Bar className="h-5 w-32" />
+      <div aria-hidden="true" className="flex h-6 gap-1.5">
+        <div className="skeleton w-16 rounded-full" />
+        <div className="skeleton w-16 rounded-full" />
+      </div>
+    </>
+  );
+}
+
 /** The button that plays the cry, the same size as the real one. */
 export function CrySkeleton() {
   return (

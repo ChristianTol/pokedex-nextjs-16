@@ -17,7 +17,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePokemonDetail } from "@/hooks/usePokemonDetail";
 import { usePokemonMoves } from "@/hooks/usePokemonMoves";
-import { pickText } from "@/lib/i18n/languages";
+import { pickText, type LocalizedText } from "@/lib/i18n/languages";
 import type { PokemonIndexEntry } from "@/lib/pokeapi/index-list";
 import { makeFavoriteKey } from "@/lib/pokedex/favorites";
 import { artworkUrl, formatName, formatNumber } from "@/lib/pokedex/format";
@@ -37,6 +37,7 @@ import {
   DetailsSkeleton,
   FactsSkeleton,
   IntroSkeleton,
+  TitleSkeleton,
 } from "./PokemonSkeleton";
 import { TypeBadge } from "./TypeBadge";
 
@@ -55,6 +56,8 @@ type Props = {
   next: Neighbor | null;
   /** The types from the list, so the window is tinted before its data is in. */
   initialTypes?: string[];
+  /** The names from the list, so the title is in your language at once. */
+  initialNames?: LocalizedText;
   /** Species that are shown in their shiny colours. */
   shinyIds: ReadonlySet<number>;
   onToggleShiny: () => void;
@@ -144,6 +147,7 @@ export function PokemonModal({
   previous,
   next,
   initialTypes,
+  initialNames,
   shinyIds,
   onToggleShiny,
   onSetShiny,
@@ -186,6 +190,7 @@ export function PokemonModal({
       : (detail?.defaultGame ?? null);
   const moves = usePokemonMoves(entry.id, detail?.pokemonId ?? null, game);
   const shown = detail && game ? detailForGame(detail, game) : detail;
+  const placeholders = !detail && !failed;
 
   // The heart belongs to the form on screen.
   const { keys: favoriteKeys, toggle: toggleFavorite } = useFavorites();
@@ -483,7 +488,8 @@ export function PokemonModal({
     (shinyOn ? detail?.shinyArtwork : detail?.artwork) ??
     artworkUrl(entry.id, shinyOn);
 
-  const name = pickText(detail?.names, language) ?? formatName(entry.name);
+  const name =
+    pickText(detail?.names ?? initialNames, language) ?? formatName(entry.name);
   const description =
     detail && game
       ? descriptionForGame(detail, game, language)
@@ -534,7 +540,7 @@ export function PokemonModal({
             <div className="hidden shrink-0 sm:block">
               <LanguageSelect compact />
             </div>
-            {!detail && !failed && (
+            {placeholders && (
               <div aria-hidden="true" className="contents">
                 <div className="skeleton size-9 rounded-full sm:hidden" />
                 <div className="skeleton hidden h-9 w-64 rounded-lg sm:block" />
@@ -616,7 +622,14 @@ export function PokemonModal({
         <div className="relative px-4 pb-6 pt-2 sm:px-8 sm:pb-8">
           <header className="mb-6 grid grid-cols-1 items-center justify-items-center gap-6 text-center sm:grid-cols-[auto_1fr_auto] sm:justify-items-start sm:gap-x-8 sm:text-left">
             <div className="relative size-40 sm:size-48">
-              {spriteView ? (
+              {/* The game sprite is only known once the details are in, so the
+                  artwork would show first and then be swapped for it. */}
+              {placeholders && showSprite ? (
+                <div
+                  aria-hidden="true"
+                  className="skeleton size-full rounded-3xl"
+                />
+              ) : spriteView ? (
                 <Image
                   src={gameSprite}
                   alt=""
@@ -678,17 +691,23 @@ export function PokemonModal({
                 {name}
               </h2>
               {/* Always there, so the types do not drop a line when it loads. */}
-              <p className="min-h-5 text-sm text-muted">
-                {pickText(detail?.genus, language)}
-              </p>
-              <div className="flex min-h-6 flex-wrap justify-center gap-1.5 sm:justify-start">
-                {shown?.types.map((type) => (
-                  <TypeBadge key={type} type={type} />
-                ))}
-              </div>
+              {placeholders ? (
+                <TitleSkeleton />
+              ) : (
+                <>
+                  <p className="min-h-5 text-sm text-muted">
+                    {pickText(detail?.genus, language)}
+                  </p>
+                  <div className="flex min-h-6 flex-wrap justify-center gap-1.5 sm:justify-start">
+                    {shown?.types.map((type) => (
+                      <TypeBadge key={type} type={type} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex w-full flex-col gap-3 sm:w-60 sm:self-start lg:w-[26rem]">
-              {!detail && !failed && <CrySkeleton />}
+              {placeholders && <CrySkeleton />}
               {detail?.cry && (
                 <div className="flex justify-center sm:justify-end">
                   <CryButton key={detail.cry} url={detail.cry} />
@@ -700,7 +719,7 @@ export function PokemonModal({
                   <PokemonFacts detail={shown ?? detail} />
                 </div>
               )}
-              {!detail && !failed && (
+              {placeholders && (
                 <div className="hidden sm:block">
                   <FactsSkeleton />
                 </div>
@@ -739,7 +758,7 @@ export function PokemonModal({
                 <PokemonFacts detail={shown ?? detail} />
               </div>
             )}
-            {!detail && !failed && <IntroSkeleton />}
+            {placeholders && <IntroSkeleton />}
           </div>
 
           {detail ? (
