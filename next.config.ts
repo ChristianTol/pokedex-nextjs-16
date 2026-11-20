@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   images: {
+    // Vercel's free image optimization quota runs out (HTTP 402), so the
+    // artwork is resized by wsrv.nl instead.
+    loader: "custom",
+    loaderFile: "./src/lib/imageLoader.ts",
     remotePatterns: [
       {
         protocol: "https",
