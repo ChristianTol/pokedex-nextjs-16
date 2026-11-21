@@ -10,12 +10,11 @@ vi.mock("@/hooks/useLanguage", () => ({
   useLanguage: () => ({
     language: languageState.language,
     t: (key: string) =>
-      ({
-        "detail.forms": "Vormen",
-        "detail.formDefault": "Standaard",
-        "detail.loading": "Gegevens laden…",
-        "detail.shiny": "Shiny",
-      })[key] ?? key,
+        ({
+          "detail.forms": "Vormen",
+          "detail.formDefault": "Standaard",
+          "detail.shiny": "Shiny",
+        })[key] ?? key,
   }),
 }));
 
@@ -55,22 +54,22 @@ const sprites: PokemonFormSprites[] = [
 ];
 
 function renderPicker(
-  overrides: Partial<React.ComponentProps<typeof FormPicker>> = {},
+    overrides: Partial<React.ComponentProps<typeof FormPicker>> = {},
 ) {
   return renderToStaticMarkup(
-    createElement(FormPicker, {
-      speciesName: "charizard",
-      forms,
-      sprites,
-      formDataLoading: false,
-      game: "red-blue",
-      showSprite: true,
-      currentFormId: 6,
-      onSelect: () => {},
-      shiny: null,
-      onToggleShiny: () => {},
-      ...overrides,
-    }),
+      createElement(FormPicker, {
+        speciesName: "charizard",
+        forms,
+        sprites,
+        formDataLoading: false,
+        game: "red-blue",
+        showSprite: true,
+        currentFormId: 6,
+        onSelect: () => {},
+        shiny: null,
+        onToggleShiny: () => {},
+        ...overrides,
+      }),
   );
 }
 
@@ -82,7 +81,7 @@ describe("FormPicker", () => {
     expect(markup).toContain('src="/mega-x.png"');
     expect(markup).toContain('src="/gmax-animated.webp"');
     expect(markup.indexOf('src="/mega-x.png"')).toBeLessThan(
-      markup.indexOf(">Mega X</span>"),
+        markup.indexOf(">Mega X</span>"),
     );
   });
 
@@ -118,16 +117,18 @@ describe("FormPicker", () => {
     expect(markup).toContain(">Alolaans</span>");
   });
 
-  it("shows the full forms skeleton while form data is loading", () => {
+  it("shows name skeletons while keeping the forms picker available", () => {
     const markup = renderPicker({ formDataLoading: true, sprites: [] });
 
-    expect(markup).toContain('role="status"');
-    expect(markup).toContain("Gegevens laden…");
-    expect(markup.match(/skeleton size-20 rounded-lg/g)).toHaveLength(4);
-    expect(markup).not.toContain("Standaard");
-    expect(markup).not.toContain("Mega X");
-    expect(markup).not.toContain('type="button"');
-    expect(markup).not.toContain("<img");
+    expect(markup).toContain(">Standaard</span>");
+    expect(markup).toContain(
+        'aria-hidden="true" class="skeleton mx-auto block h-4 w-16 rounded-md"',
+    );
+    expect(markup).not.toContain(">Mega X</span>");
+    expect(markup).not.toContain(">Gigantamax</span>");
+    expect(markup).toContain('aria-label="Mega X"');
+    expect(markup.match(/aria-pressed=/g)).toHaveLength(forms.length);
+    expect(markup).not.toContain("skeleton size-20 rounded-lg");
   });
 
   it("shows the translated form label after loading", () => {
@@ -141,15 +142,14 @@ describe("FormPicker", () => {
     languageState.language = "nl";
 
     expect(markup).toContain(">Mega Venusaur X</span>");
-    expect(markup).not.toContain("skeleton size-20 rounded-lg");
+    expect(markup).not.toContain("skeleton mx-auto block h-4");
   });
 
   it("shows the fallback form label when name loading fails", () => {
     const markup = renderPicker({ formDataLoading: false, sprites: [] });
 
     expect(markup).toContain(">Mega X</span>");
-    expect(markup).not.toContain('aria-label="Mega X"');
-    expect(markup).not.toContain("skeleton size-20 rounded-lg");
+    expect(markup).not.toContain("skeleton mx-auto block h-4");
   });
 
   it("keeps the selected form aligned with the selected game's sprite", () => {
@@ -174,7 +174,7 @@ describe("FormPicker", () => {
 
     expect(markup).not.toContain("<ul tabindex=");
     expect(markup).toContain(
-      'class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-full flex-wrap sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
+        'class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-full flex-wrap sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
     );
     expect(markup).toContain('class="flex w-20 sm:shrink-0"');
   });
@@ -185,7 +185,7 @@ describe("FormPicker", () => {
     });
 
     expect(markup).toContain(
-      'tabindex="0" class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-[18rem] flex-nowrap overflow-x-auto pb-1 sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
+        'tabindex="0" class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-[18rem] flex-nowrap overflow-x-auto pb-1 sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
     );
     expect(markup).toContain('class="flex w-20 shrink-0"');
     expect((markup.match(/aria-pressed=/g) ?? [])).toHaveLength(4);
@@ -201,7 +201,7 @@ describe("FormPicker", () => {
     });
 
     expect(markup).toContain(
-      'tabindex="0" class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-[18rem] flex-nowrap overflow-x-auto pb-1 sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
+        'tabindex="0" class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-[18rem] flex-nowrap overflow-x-auto pb-1 sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
     );
     expect(markup).toContain('class="flex w-20 shrink-0"');
     expect((markup.match(/aria-pressed=/g) ?? [])).toHaveLength(5);
@@ -212,7 +212,7 @@ describe("FormPicker", () => {
 
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain(
-      'class="flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors border-selected bg-surface-muted"',
+        'class="flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors border-selected bg-surface-muted"',
     );
   });
 
@@ -224,7 +224,7 @@ describe("FormPicker", () => {
     const formsIndex = markup.indexOf("<ul");
 
     expect(markup).toContain(
-      'class="flex items-center justify-between gap-2"',
+        'class="flex items-center justify-between gap-2"',
     );
     expect(headingIndex).toBeLessThan(shinyIndex);
     expect(shinyIndex).toBeLessThan(formsIndex);
