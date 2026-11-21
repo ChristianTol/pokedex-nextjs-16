@@ -411,14 +411,8 @@ function MoveMobileStats({ info }: { info: MoveInfo | undefined }) {
 
   return (
     <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted sm:hidden">
-      {stats.map((stat) => (
-        <div key={stat.label} className="flex gap-1.5">
-          <dt>{stat.label}</dt>
-          <dd className="font-medium text-foreground">{stat.value}</dd>
-        </div>
-      ))}
       {info?.damageClass && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex w-full items-center gap-1.5">
           <dt>{t("moves.category")}</dt>
           <dd>
             <span
@@ -429,6 +423,12 @@ function MoveMobileStats({ info }: { info: MoveInfo | undefined }) {
           </dd>
         </div>
       )}
+      {stats.map((stat) => (
+        <div key={stat.label} className="flex gap-1.5">
+          <dt>{stat.label}</dt>
+          <dd className="font-medium text-foreground">{stat.value}</dd>
+        </div>
+      ))}
     </dl>
   );
 }

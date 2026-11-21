@@ -107,6 +107,9 @@ describe("PokemonMoves", () => {
     expect(details).toContain("100");
     expect(details).toContain("15");
     expect(details!.indexOf("Move description")).toBeLessThan(
+      details!.indexOf("moves.category"),
+    );
+    expect(details!.indexOf("moves.category")).toBeLessThan(
       details!.indexOf("moves.power"),
     );
     expect(details!.indexOf("moves.power")).toBeLessThan(
@@ -115,13 +118,8 @@ describe("PokemonMoves", () => {
     expect(details!.indexOf("moves.accuracy")).toBeLessThan(
       details!.indexOf("moves.pp"),
     );
-    expect(details!.indexOf("moves.pp")).toBeLessThan(
-      details!.indexOf("moves.category"),
-    );
+    expect(details).toContain('class="flex w-full items-center gap-1.5"');
     expect(details).toContain("class.special");
-    expect(details!.indexOf("moves.category")).toBeLessThan(
-      details!.indexOf("moves.effectChance"),
-    );
     expect(details!.indexOf("moves.pp")).toBeLessThan(
       details!.indexOf("moves.effectChance"),
     );
