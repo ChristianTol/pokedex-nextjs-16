@@ -202,7 +202,7 @@ export function PokemonMoves({ moves }: Props) {
             aria-labelledby={`${ids}-tab-${tab}`}
             className="relative max-h-96 overflow-auto rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-selected"
           >
-            <table className="w-full min-w-[34rem] text-left text-sm">
+            <table className="w-full table-fixed text-left text-sm sm:table-auto sm:min-w-[34rem]">
               <thead className="sticky top-0 bg-surface-muted text-xs text-muted">
                 <tr>
                   {tab === "levelUp" && (
@@ -213,16 +213,28 @@ export function PokemonMoves({ moves }: Props) {
                   <th scope="col" className="px-3 py-2 font-medium">
                     {t("moves.move")}
                   </th>
-                  <th scope="col" className="px-3 py-2 font-medium">
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-2 font-medium sm:table-cell"
+                  >
                     {t("moves.category")}
                   </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-2 text-right font-medium sm:table-cell"
+                  >
                     {t("moves.power")}
                   </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-2 text-right font-medium sm:table-cell"
+                  >
                     {t("moves.accuracy")}
                   </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-2 text-right font-medium sm:table-cell"
+                  >
                     {t("moves.pp")}
                   </th>
                 </tr>
@@ -308,7 +320,7 @@ function MoveRow({
             aria-expanded={expanded}
             aria-controls={detailId}
             onClick={onToggle}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-selected"
+            className="flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-selected"
           >
             <svg
               viewBox="0 0 16 16"
@@ -330,10 +342,10 @@ function MoveRow({
                 <span className="sr-only">{typeName(info.type)}</span>
               </>
             )}
-            {label}
+            <span className="min-w-0 break-words">{label}</span>
           </button>
         </th>
-        <td className="px-3 py-2">
+        <td className="hidden px-3 py-2 sm:table-cell">
           {info?.damageClass && (
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium text-white ${CLASS_COLORS[info.damageClass]}`}
@@ -342,37 +354,96 @@ function MoveRow({
             </span>
           )}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums">
+        <td className="hidden px-3 py-2 text-right tabular-nums sm:table-cell">
           {formatMoveStat(info?.power ?? null)}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums">
+        <td className="hidden px-3 py-2 text-right tabular-nums sm:table-cell">
           {formatMoveStat(info?.accuracy ?? null)}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums">
+        <td className="hidden px-3 py-2 text-right tabular-nums sm:table-cell">
           {formatMoveStat(info?.pp ?? null)}
         </td>
       </tr>
       {expanded && (
         <tr id={detailId} className="bg-surface-muted/40">
-          <td colSpan={showLevel ? 6 : 5} className="px-3 pb-3 pt-1">
+          <td
+            colSpan={showLevel ? 2 : 1}
+            className="px-3 pb-3 pt-1 sm:hidden"
+          >
+            <MoveDescription description={description} />
+            <MoveMobileStats info={info} />
+            <MoveFacts facts={facts} />
+          </td>
+          <td
+            colSpan={showLevel ? 6 : 5}
+            className="hidden px-3 pb-3 pt-1 sm:table-cell"
+          >
             <p className="max-w-prose text-sm leading-relaxed">
               {description ?? t("detail.noDescription")}
             </p>
-            {facts.length > 0 && (
-              <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
-                {facts.map((fact) => (
-                  <div key={fact.label} className="flex gap-1.5">
-                    <dt>{fact.label}</dt>
-                    <dd className="font-medium text-foreground">
-                      {fact.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            )}
+            <MoveFacts facts={facts} />
           </td>
         </tr>
       )}
     </>
+  );
+}
+
+function MoveDescription({ description }: { description: string | null }) {
+  const { t } = useLanguage();
+  return (
+    <p className="max-w-prose text-sm leading-relaxed">
+      {description ?? t("detail.noDescription")}
+    </p>
+  );
+}
+
+function MoveMobileStats({ info }: { info: MoveInfo | undefined }) {
+  const { t } = useLanguage();
+  const stats = [
+    { label: t("moves.power"), value: formatMoveStat(info?.power ?? null) },
+    {
+      label: t("moves.accuracy"),
+      value: formatMoveStat(info?.accuracy ?? null),
+    },
+    { label: t("moves.pp"), value: formatMoveStat(info?.pp ?? null) },
+  ];
+
+  return (
+    <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted sm:hidden">
+      {stats.map((stat) => (
+        <div key={stat.label} className="flex gap-1.5">
+          <dt>{stat.label}</dt>
+          <dd className="font-medium text-foreground">{stat.value}</dd>
+        </div>
+      ))}
+      {info?.damageClass && (
+        <div className="flex items-center gap-1.5">
+          <dt>{t("moves.category")}</dt>
+          <dd>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium text-white ${CLASS_COLORS[info.damageClass]}`}
+            >
+              {t(CLASS_LABELS[info.damageClass])}
+            </span>
+          </dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+function MoveFacts({ facts }: { facts: { label: string; value: string }[] }) {
+  if (facts.length === 0) return null;
+
+  return (
+    <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
+      {facts.map((fact) => (
+        <div key={fact.label} className="flex gap-1.5">
+          <dt>{fact.label}</dt>
+          <dd className="font-medium text-foreground">{fact.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
