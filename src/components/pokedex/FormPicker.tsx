@@ -101,8 +101,12 @@ export function FormPicker({
         )}
       </div>
       <ul
-        tabIndex={forms.length > 4 ? 0 : undefined}
-        className="flex min-w-0 max-w-full flex-wrap gap-2 focus-visible:outline-2 focus-visible:outline-selected sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"
+        tabIndex={forms.length > 3 ? 0 : undefined}
+        className={`flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected ${
+          forms.length > 3
+            ? "max-w-[18rem] flex-nowrap overflow-x-auto pb-1"
+            : "max-w-full flex-wrap"
+        } sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1`}
       >
         {forms.map((form) => {
           const active = form.id === currentFormId;
@@ -110,7 +114,10 @@ export function FormPicker({
             ? t("detail.formDefault")
             : formatFormLabel(speciesName, form.name);
           return (
-            <li key={form.id} className="flex w-20 sm:shrink-0">
+            <li
+              key={form.id}
+              className={`flex w-20 ${forms.length > 3 ? "shrink-0" : "sm:shrink-0"}`}
+            >
               <button
                 type="button"
                 onClick={() => onSelect(form.id)}

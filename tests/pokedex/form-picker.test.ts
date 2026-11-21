@@ -98,6 +98,28 @@ describe("FormPicker", () => {
     expect(markup).toContain('src="/mega-x.png"');
   });
 
+  it("keeps three forms wrapping on mobile", () => {
+    const markup = renderPicker();
+
+    expect(markup).not.toContain("<ul tabindex=");
+    expect(markup).toContain(
+      'class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-full flex-wrap sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
+    );
+    expect(markup).toContain('class="flex w-20 sm:shrink-0"');
+  });
+
+  it("makes four forms a horizontally scrollable mobile row", () => {
+    const markup = renderPicker({
+      forms: [...forms, { id: 10046, name: "charizard-mega-y", isDefault: false }],
+    });
+
+    expect(markup).toContain(
+      'tabindex="0" class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-[18rem] flex-nowrap overflow-x-auto pb-1 sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
+    );
+    expect(markup).toContain('class="flex w-20 shrink-0"');
+    expect((markup.match(/aria-pressed=/g) ?? [])).toHaveLength(4);
+  });
+
   it("keeps more than four forms in a horizontally scrollable desktop row", () => {
     const markup = renderPicker({
       forms: [
@@ -108,9 +130,9 @@ describe("FormPicker", () => {
     });
 
     expect(markup).toContain(
-      'tabindex="0" class="flex min-w-0 max-w-full flex-wrap gap-2 focus-visible:outline-2 focus-visible:outline-selected sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
+      'tabindex="0" class="flex min-w-0 gap-2 focus-visible:outline-2 focus-visible:outline-selected max-w-[18rem] flex-nowrap overflow-x-auto pb-1 sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"',
     );
-    expect(markup).toContain('class="flex w-20 sm:shrink-0"');
+    expect(markup).toContain('class="flex w-20 shrink-0"');
     expect((markup.match(/aria-pressed=/g) ?? [])).toHaveLength(5);
   });
 
@@ -118,7 +140,9 @@ describe("FormPicker", () => {
     const markup = renderPicker();
 
     expect(markup).toContain('aria-pressed="true"');
-    expect(markup).toContain('class="flex size-20 items-center justify-center overflow-hidden rounded-lg border-2 bg-surface p-2 transition-colors border-selected"');
+    expect(markup).toContain(
+      'class="flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors border-selected bg-surface-muted"',
+    );
   });
 
   it("places the shiny control at the right of the title at every screen size", () => {
