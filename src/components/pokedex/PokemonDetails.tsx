@@ -20,15 +20,19 @@ export const CARD =
 function Section({
   title,
   action,
+  className,
   children,
 }: {
   title: string;
   /** Sits at the right of the title; the header keeps its height without it. */
   action?: React.ReactNode;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className={`flex min-w-0 flex-col gap-3 ${CARD}`}>
+    <section
+      className={`flex min-w-0 flex-col gap-3 ${CARD}${className ? ` ${className}` : ""}`}
+    >
       {action === undefined ? (
         <h3 className="text-sm font-semibold text-muted">{title}</h3>
       ) : (
@@ -117,7 +121,7 @@ export function PokemonDetails({
     <div className="flex flex-col gap-6 lg:gap-8">
       {/* The evolution chain needs more room than the stats. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-8">
-        <Section title={t("detail.stats")}>
+        <Section title={t("detail.stats")} className="lg:self-center">
           <ul className="flex flex-col gap-2">
             {detail.stats.map((stat) => (
               <li
