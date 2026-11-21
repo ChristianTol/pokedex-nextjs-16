@@ -13,6 +13,7 @@ type Props = {
   speciesName: string;
   forms: PokemonForm[];
   sprites: PokemonFormSprites[];
+  formNamesLoading: boolean;
   game: string | null;
   showSprite: boolean;
   currentFormId: number;
@@ -67,6 +68,7 @@ export function FormPicker({
   speciesName,
   forms,
   sprites,
+  formNamesLoading,
   game,
   showSprite,
   currentFormId,
@@ -74,7 +76,7 @@ export function FormPicker({
   shiny,
   onToggleShiny,
 }: Props) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   return (
     <section
       aria-label={t("detail.forms")}
@@ -110,9 +112,10 @@ export function FormPicker({
       >
         {forms.map((form) => {
           const active = form.id === currentFormId;
+          const formSprites = sprites.find((sprite) => sprite.id === form.id);
           const label = form.isDefault
             ? t("detail.formDefault")
-            : formatFormLabel(speciesName, form.name);
+            : formatFormLabel(speciesName, form.name, language, formSprites?.names);
           return (
             <li
               key={form.id}
@@ -121,6 +124,7 @@ export function FormPicker({
               <button
                 type="button"
                 onClick={() => onSelect(form.id)}
+                aria-label={label}
                 aria-pressed={active}
                 className="group flex w-full flex-col items-center gap-1.5 rounded-xl text-center text-xs focus-visible:outline-2 focus-visible:outline-selected"
               >
@@ -134,7 +138,7 @@ export function FormPicker({
                 >
                   <FormSpriteImage
                     key={`${form.id}:${game ?? ""}:${shiny === true}:${showSprite}:${!active}`}
-                    form={sprites.find((sprite) => sprite.id === form.id)}
+                    form={formSprites}
                     game={game}
                     showSprite={showSprite}
                     shiny={shiny === true}
@@ -142,7 +146,14 @@ export function FormPicker({
                   />
                 </span>
                 <span className="w-full break-words leading-tight">
-                  {label}
+                  {formNamesLoading && !form.isDefault ? (
+                    <span
+                      aria-hidden="true"
+                      className="skeleton mx-auto block h-4 w-16 rounded-md"
+                    />
+                  ) : (
+                    label
+                  )}
                 </span>
               </button>
             </li>

@@ -110,6 +110,8 @@ export type PokemonForm = {
 
 export type PokemonFormSprites = {
   id: number;
+  /** Localized form name from PokéAPI, when its form resource is available. */
+  names?: LocalizedText;
   gameSprites: Record<string, GameSprite>;
   defaultSprite: string | null;
   shinyDefaultSprite: string | null;
@@ -201,6 +203,7 @@ type PokemonResponse = {
   stats: { base_stat: number; stat: { name: string } }[];
   /** Only used for the list of games; the moves themselves load separately. */
   moves?: PokemonMovesResponse["moves"];
+  forms?: { url: string }[];
   past_stats?: {
     generation: { url: string };
     stats: { base_stat: number; stat: { name: string } }[];
@@ -237,6 +240,8 @@ type PokemonResponse = {
 };
 
 type NameEntry = { name: string; language: { name: string } };
+
+type PokemonFormResponse = { form_names: NameEntry[] };
 
 type FlavorTextEntry = {
   flavor_text: string;
@@ -573,6 +578,12 @@ export function parseFormSprites(
   };
 }
 
+export function parsePokemonFormNames(
+  form: PokemonFormResponse,
+): LocalizedText {
+  return parseLocalizedNames(form.form_names ?? []);
+}
+
 const isSet = <T>(value: T | null | undefined | false | ""): value is T =>
   value !== null && value !== undefined && value !== false && value !== "";
 
@@ -849,7 +860,7 @@ export async function resolveForm(id: number, formId?: number) {
   return { species, targetId };
 }
 
-/** Loads each variety's sprites independently so one missing form is harmless. */
+/** Loads each variety's sprites and localized form name independently. */
 export async function getPokemonFormSprites(
   id: number,
 ): Promise<PokemonFormSprites[]> {
@@ -858,10 +869,21 @@ export async function getPokemonFormSprites(
   return mapWithConcurrency(forms, 6, async (form) => {
     try {
       const pokemon = await fetchPokeApi<PokemonResponse>(`/pokemon/${form.id}`);
-      return parseFormSprites(form.id, pokemon);
+      const sprites = parseFormSprites(form.id, pokemon);
+      const formResource = pokemon.forms?.[0];
+      if (!formResource) return { ...sprites, names: {} };
+      try {
+        const formData = await fetchPokeApi<PokemonFormResponse>(
+          `/pokemon-form/${idFromUrl(formResource.url)}`,
+        );
+        return { ...sprites, names: parsePokemonFormNames(formData) };
+      } catch {
+        return { ...sprites, names: {} };
+      }
     } catch {
       return {
         id: form.id,
+        names: {},
         gameSprites: {},
         defaultSprite: null,
         shinyDefaultSprite: null,

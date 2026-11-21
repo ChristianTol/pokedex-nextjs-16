@@ -1,4 +1,10 @@
-import { DEFAULT_LANGUAGE, LOCALES, type Language } from "@/lib/i18n/languages";
+import {
+  DEFAULT_LANGUAGE,
+  LOCALES,
+  type Language,
+  type LocalizedText,
+} from "@/lib/i18n/languages";
+import { translateDutchFormSuffix } from "@/lib/pokedex/form-translations";
 
 /** "mr-mime" -> "Mr Mime" */
 export function formatName(slug: string): string {
@@ -18,15 +24,30 @@ const FORM_WORDS: Record<string, string> = {
 };
 
 /** ("charizard", "charizard-mega-x") -> "Mega X"; ("vulpix", "vulpix-alola") -> "Alolan" */
-export function formatFormLabel(speciesName: string, formName: string): string {
+export function formatFormLabel(
+  speciesName: string,
+  formName: string,
+  language: Language = "en",
+  names?: LocalizedText,
+): string {
   const prefix = `${speciesName}-`;
   const suffix = formName.startsWith(prefix)
     ? formName.slice(prefix.length)
     : formName;
-  return suffix
-    .split("-")
-    .map((word) => FORM_WORDS[word] ?? formatName(word))
-    .join(" ");
+  const localized = language === "nl" ? null : names?.[language] || names?.en;
+  const label = localized?.trim()
+    ? localized.trim()
+    : language === "nl"
+      ? translateDutchFormSuffix(suffix)
+      : suffix
+          .split("-")
+          .map((word) => FORM_WORDS[word] ?? formatName(word))
+          .join(" ");
+  const megaVariant = suffix.match(/(?:^|-)mega-([xy])$/i)?.[1];
+  if (megaVariant && !new RegExp(`${megaVariant}$`, "i").test(label)) {
+    return `${label} ${megaVariant.toUpperCase()}`;
+  }
+  return label;
 }
 
 /** 25 -> "#025", 1025 -> "#1025" (at least three digits) */

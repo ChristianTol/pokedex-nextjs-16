@@ -10,6 +10,7 @@ import {
   parseEvolution,
   parseEvolutionMethod,
   parseForms,
+  parsePokemonFormNames,
   parseGameDescriptions,
   parseGameSprites,
   parseGender,
@@ -92,6 +93,26 @@ describe("parseLocalizedNames", () => {
     expect(parseLocalizedNames([hrkt, kanji])).toEqual({ ja: "吹雪" });
     expect(parseLocalizedNames([kanji, hrkt])).toEqual({ ja: "吹雪" });
     expect(parseLocalizedNames([hrkt])).toEqual({ ja: "ふぶき" });
+  });
+});
+
+describe("parsePokemonFormNames", () => {
+  it("keeps supported languages and prefers Japanese kanji", () => {
+    expect(
+      parsePokemonFormNames({
+        form_names: [
+          { name: "Mega X", language: { name: "en" } },
+          { name: "Mega X", language: { name: "de" } },
+          { name: "メガX", language: { name: "ja-hrkt" } },
+          { name: "メガＸ", language: { name: "ja" } },
+          { name: "Méga X", language: { name: "fr" } },
+        ],
+      }),
+    ).toEqual({ en: "Mega X", de: "Mega X", ja: "メガＸ", fr: "Méga X" });
+  });
+
+  it("returns no translations when the form has no names", () => {
+    expect(parsePokemonFormNames({ form_names: [] })).toEqual({});
   });
 });
 

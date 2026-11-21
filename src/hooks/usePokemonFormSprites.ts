@@ -33,5 +33,8 @@ export function usePokemonFormSprites(
     };
   }, [speciesId, forms.length, formsKey, key]);
 
-  return { sprites: result?.key === key ? result.sprites : [] };
+  return {
+    sprites: result?.key === key ? result.sprites : [],
+    loading: forms.length > 0 && result?.key !== key,
+  };
 }

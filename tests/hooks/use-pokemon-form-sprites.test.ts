@@ -48,22 +48,45 @@ describe("usePokemonFormSprites", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    expect(usePokemonFormSprites(25, singleForm).sprites).toEqual([]);
+    expect(usePokemonFormSprites(25, singleForm)).toEqual({
+      sprites: [],
+      loading: true,
+    });
     hookHarness.effects[0]();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetchMock).toHaveBeenCalledWith("/api/pokemon/25/forms");
-    expect(usePokemonFormSprites(25, singleForm).sprites).toEqual(sprites);
+    expect(usePokemonFormSprites(25, singleForm)).toEqual({
+      sprites,
+      loading: false,
+    });
   });
 
   it("does not fetch when there are no forms", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    usePokemonFormSprites(25, []);
+    expect(usePokemonFormSprites(25, [])).toEqual({
+      sprites: [],
+      loading: false,
+    });
     hookHarness.effects[0]();
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("stops loading when the sprite request fails", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("unavailable"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(usePokemonFormSprites(25, singleForm).loading).toBe(true);
+    hookHarness.effects[0]();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(usePokemonFormSprites(25, singleForm)).toEqual({
+      sprites: [],
+      loading: false,
+    });
   });
 
   it("ignores a response after the request becomes stale", async () => {
@@ -86,6 +109,9 @@ describe("usePokemonFormSprites", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(hookHarness.state).toBeNull();
-    expect(usePokemonFormSprites(25, singleForm).sprites).toEqual([]);
+    expect(usePokemonFormSprites(25, singleForm)).toEqual({
+      sprites: [],
+      loading: true,
+    });
   });
 });

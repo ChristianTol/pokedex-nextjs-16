@@ -1,8 +1,22 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PokemonForm, PokemonFormSprites } from "@/lib/pokeapi/detail";
 import { FormPicker } from "@/components/pokedex/FormPicker";
+
+const languageState = vi.hoisted(() => ({ language: "nl" }));
+
+vi.mock("@/hooks/useLanguage", () => ({
+  useLanguage: () => ({
+    language: languageState.language,
+    t: (key: string) =>
+      ({
+        "detail.forms": "Vormen",
+        "detail.formDefault": "Standaard",
+        "detail.shiny": "Shiny",
+      })[key] ?? key,
+  }),
+}));
 
 const forms: PokemonForm[] = [
   { id: 6, name: "charizard", isDefault: true },
@@ -47,6 +61,7 @@ function renderPicker(
       speciesName: "charizard",
       forms,
       sprites,
+      formNamesLoading: false,
       game: "red-blue",
       showSprite: true,
       currentFormId: 6,
@@ -79,6 +94,60 @@ describe("FormPicker", () => {
     expect(markup).not.toContain('src="/charizard.png"');
     expect(markup).not.toContain('src="/gmax-animated.webp"');
     expect(markup).not.toContain("image-rendering:pixelated");
+  });
+
+  it("uses the Dutch form suffix fallback for labels without Dutch API names", () => {
+    const markup = renderPicker({
+      speciesName: "vulpix",
+      forms: [{ id: 10001, name: "vulpix-alola", isDefault: false }],
+      sprites: [
+        {
+          id: 10001,
+          names: { en: "Alolan" },
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        },
+      ],
+      currentFormId: 10001,
+    });
+
+    expect(markup).toContain(">Alolaans</span>");
+  });
+
+  it("shows a name skeleton while non-default form names are loading", () => {
+    const markup = renderPicker({ formNamesLoading: true, sprites: [] });
+
+    expect(markup).toContain(">Standaard</span>");
+    expect(markup).toContain(
+      'aria-hidden="true" class="skeleton mx-auto block h-4 w-16 rounded-md"',
+    );
+    expect(markup).not.toContain(">Mega X</span>");
+    expect(markup).not.toContain(">Gigantamax</span>");
+    expect(markup).toContain('aria-label="Mega X"');
+  });
+
+  it("shows the translated form label after loading", () => {
+    languageState.language = "en";
+    const markup = renderPicker({
+      formNamesLoading: false,
+      sprites: [
+        { ...sprites[1], names: { en: "Mega Venusaur" } },
+      ],
+    });
+    languageState.language = "nl";
+
+    expect(markup).toContain(">Mega Venusaur X</span>");
+    expect(markup).not.toContain("skeleton mx-auto block h-4");
+  });
+
+  it("shows the fallback form label when name loading fails", () => {
+    const markup = renderPicker({ formNamesLoading: false, sprites: [] });
+
+    expect(markup).toContain(">Mega X</span>");
+    expect(markup).not.toContain("skeleton mx-auto block h-4");
   });
 
   it("keeps the selected form aligned with the selected game's sprite", () => {

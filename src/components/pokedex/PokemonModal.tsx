@@ -169,7 +169,10 @@ export function PokemonModal({
   if (formChoice && formChoice.speciesId !== entry.id) setFormChoice(null);
   const formId = formChoice?.formId ?? null;
   const { detail, loading, failed, retry } = usePokemonDetail(entry.id, formId);
-  const { sprites: formSprites } = usePokemonFormSprites(
+  const {
+    sprites: formSprites,
+    loading: formNamesLoading,
+  } = usePokemonFormSprites(
     entry.id,
     detail?.forms ?? [],
   );
@@ -728,6 +731,7 @@ export function PokemonModal({
                     speciesName={detail.speciesName}
                     forms={detail.forms}
                     sprites={formSprites}
+                    formNamesLoading={formNamesLoading}
                     game={game}
                     showSprite={showSprite}
                     currentFormId={currentFormId ?? detail.pokemonId}
@@ -754,6 +758,7 @@ export function PokemonModal({
                   speciesName={detail.speciesName}
                   forms={detail.forms}
                   sprites={formSprites}
+                  formNamesLoading={formNamesLoading}
                   game={game}
                   showSprite={showSprite}
                   currentFormId={currentFormId ?? detail.pokemonId}

@@ -31,6 +31,43 @@ describe("formatFormLabel", () => {
   it("uses the whole name when the prefix differs", () => {
     expect(formatFormLabel("nidoran-f", "nidoran-f")).toBe("Nidoran F");
   });
+
+  it("uses the official form name for the selected language", () => {
+    expect(
+      formatFormLabel("charizard", "charizard-mega-x", "de", {
+        de: "Mega X",
+        en: "Mega X",
+      }),
+    ).toBe("Mega X");
+    expect(
+      formatFormLabel("charizard", "charizard-mega-y", "fr", {
+        fr: "Méga",
+        en: "Mega Y",
+      }),
+    ).toBe("Méga Y");
+  });
+
+  it("translates known form suffixes to Dutch", () => {
+    expect(formatFormLabel("vulpix", "vulpix-alola", "nl")).toBe("Alolaans");
+    expect(formatFormLabel("charizard", "charizard-gmax", "nl")).toBe(
+      "Gigantamax",
+    );
+    expect(formatFormLabel("charizard", "charizard-mega-x", "nl")).toBe(
+      "Mega X",
+    );
+  });
+
+  it("falls back to English or the slug and keeps Mega X/Y distinguishable", () => {
+    expect(
+      formatFormLabel("charizard", "charizard-mega-y", "it", {
+        en: "Mega",
+      }),
+    ).toBe("Mega Y");
+    expect(formatFormLabel("rotom", "rotom-frost", "nl")).toBe("Vorst");
+    expect(formatFormLabel("pikachu", "pikachu-rock-star", "nl")).toBe(
+      "Rock Star",
+    );
+  });
 });
 
 describe("formatHeight", () => {
