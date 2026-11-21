@@ -35,7 +35,7 @@ function SectionSkeleton({
   );
 }
 
-/** Gender and size, for beside the title (or below the forms on a phone). */
+/** Gender and size, beside the description (or below the forms on a phone). */
 export function FactsSkeleton() {
   const { t } = useLanguage();
   return (
@@ -72,17 +72,41 @@ export function CrySkeleton() {
   );
 }
 
-/** The description and the forms, in the grid under the title. */
+/** The forms, beside the title while their data is loading. */
+export function FormPickerSkeleton() {
+  const { t } = useLanguage();
+  return (
+    <div aria-hidden="true" className="flex min-w-0 flex-col gap-3">
+      <h3 className="text-sm font-semibold text-muted">{t("detail.forms")}</h3>
+      <ul className="flex min-w-0 max-w-full gap-2 overflow-hidden sm:max-w-[21.5rem]">
+        {Array.from({ length: 4 }, (_, index) => (
+          <li
+            key={index}
+            className="flex w-20 shrink-0 flex-col items-center gap-1.5"
+          >
+            <div className="skeleton size-20 rounded-lg" />
+            <Bar className="h-4 w-16" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The description, desktop facts, and mobile forms and facts. */
 export function IntroSkeleton() {
   return (
     <>
+      <div className={`sm:hidden ${CARD}`}>
+        <FormPickerSkeleton />
+      </div>
       <div aria-hidden="true" className={`${CARD} flex flex-col gap-2`}>
         <Bar className="h-5 w-full" />
         <Bar className="h-5 w-full" />
         <Bar className="h-5 w-2/3" />
       </div>
-      <div aria-hidden="true" className={CARD}>
-        <Bar className="h-24 w-full" />
+      <div className="hidden min-w-0 sm:block lg:self-center">
+        <FactsSkeleton />
       </div>
       <div className="sm:hidden">
         <FactsSkeleton />

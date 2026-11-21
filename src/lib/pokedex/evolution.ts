@@ -13,6 +13,16 @@ export function evolutionIds(node: EvolutionNode): number[] {
   return [node.id, ...node.evolvesTo.flatMap(evolutionIds)];
 }
 
+/** Pokémon IDs to fetch for the forms selected in an evolution tree. */
+export function evolutionSpriteIds(node: EvolutionNode): number[] {
+  return [
+    ...new Set([
+      node.formId ?? node.id,
+      ...node.evolvesTo.flatMap(evolutionSpriteIds),
+    ]),
+  ];
+}
+
 /**
  * The ways to evolve that apply in a game. PokéAPI lists alternatives and
  * per-game versions together, so, in order:

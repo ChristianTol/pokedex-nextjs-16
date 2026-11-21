@@ -3,6 +3,7 @@ import type {
   PastStats,
   PokemonAbility,
   PokemonDetail,
+  PokemonFormSprites,
   PokemonStat,
 } from "@/lib/pokeapi/detail";
 import { pickText, type Language } from "@/lib/i18n/languages";
@@ -129,6 +130,50 @@ export function spriteForGame(
     if (sprite) return (shiny && sprite.shiny) || sprite.front;
   }
   return null;
+}
+
+/** Uses the chosen game's sprite, or the newest available one without a game. */
+export function spriteForGameOrLatest(
+  sprites: PokemonDetail["gameSprites"],
+  game: string | null,
+  shiny: boolean,
+): string | null {
+  if (game) return spriteForGame(sprites, game, shiny);
+  const newest = Object.values(sprites).at(-1);
+  return newest ? (shiny && newest.shiny ? newest.shiny : newest.front) : null;
+}
+
+/** Whether the sprite and artwork buttons would actually show different images. */
+export function hasSpriteToggle(
+  sprite: string | null,
+  artwork: string | null,
+): boolean {
+  return sprite !== null && artwork !== null && sprite !== artwork;
+}
+
+/** Candidate sprites for a form tile, preferring the selected image style. */
+export function formSpriteCandidates(
+  form: PokemonFormSprites,
+  game: string | null,
+  shiny: boolean,
+  showSprite = true,
+  fallbackToLatestGameSprite = false,
+): string[] {
+  const gameSprite =
+    spriteForGameOrLatest(form.gameSprites, game, shiny) ??
+    (fallbackToLatestGameSprite && game
+      ? spriteForGameOrLatest(form.gameSprites, null, shiny)
+      : null);
+  const defaultSprite = shiny
+    ? (form.shinyDefaultSprite ?? form.defaultSprite)
+    : form.defaultSprite;
+  const artwork = shiny
+    ? (form.shinyArtwork ?? form.artwork)
+    : form.artwork;
+  const candidates = showSprite
+    ? [gameSprite, defaultSprite, artwork]
+    : [artwork, gameSprite, defaultSprite];
+  return [...new Set(candidates.filter((url): url is string => url !== null))];
 }
 
 /**

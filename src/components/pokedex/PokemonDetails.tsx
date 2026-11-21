@@ -94,6 +94,7 @@ export function PokemonDetails({
   shinyIds,
   onSetShiny,
   game,
+  showSprite,
 }: {
   detail: PokemonDetail;
   onSelectPokemon: (id: number, formId?: number) => void;
@@ -103,6 +104,8 @@ export function PokemonDetails({
   onSetShiny: (ids: readonly number[], on: boolean) => void;
   /** The game chosen in the window. */
   game: string | null;
+  /** Whether game sprites or artwork are selected in the window. */
+  showSprite: boolean;
 }) {
   const { language, t } = useLanguage();
   const statLabel = (name: string) => {
@@ -157,6 +160,7 @@ export function PokemonDetails({
             shinyIds={shinyIds}
             onSetShiny={onSetShiny}
             game={game}
+            showSprite={showSprite}
           />
         </Section>
       </div>

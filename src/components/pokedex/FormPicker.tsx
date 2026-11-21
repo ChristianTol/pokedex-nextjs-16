@@ -1,13 +1,20 @@
+import Image from "next/image";
+import { useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
-import type { PokemonForm } from "@/lib/pokeapi/detail";
-import { formatFormLabel, formatName } from "@/lib/pokedex/format";
-import { formItem } from "@/lib/pokedex/form-items";
-import { ItemSprite } from "./ItemSprite";
+import type {
+  PokemonForm,
+  PokemonFormSprites,
+} from "@/lib/pokeapi/detail";
+import { formatFormLabel } from "@/lib/pokedex/format";
+import { formSpriteCandidates } from "@/lib/pokedex/game-detail";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
   speciesName: string;
   forms: PokemonForm[];
+  sprites: PokemonFormSprites[];
+  game: string | null;
+  showSprite: boolean;
   currentFormId: number;
   onSelect: (formId: number) => void;
   /** Whether the shiny version is shown; null when this form has none. */
@@ -18,9 +25,50 @@ type Props = {
 const CHIP =
   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-selected";
 
+function FormSpriteImage({
+  form,
+  game,
+  showSprite,
+  shiny,
+  fallbackToLatestGameSprite,
+}: {
+  form: PokemonFormSprites | undefined;
+  game: string | null;
+  showSprite: boolean;
+  shiny: boolean;
+  fallbackToLatestGameSprite: boolean;
+}) {
+  const [failedCount, setFailedCount] = useState(0);
+  const candidates = form
+    ? formSpriteCandidates(
+        form,
+        game,
+        shiny,
+        showSprite,
+        fallbackToLatestGameSprite,
+      )
+    : [];
+  const src = candidates[failedCount];
+  if (!src) return null;
+  return (
+    <Image
+      src={src}
+      alt=""
+      width={64}
+      height={64}
+      unoptimized
+      className={`size-16 object-contain ${showSprite ? "[image-rendering:pixelated]" : ""}`}
+      onError={() => setFailedCount((count) => count + 1)}
+    />
+  );
+}
+
 export function FormPicker({
   speciesName,
   forms,
+  sprites,
+  game,
+  showSprite,
   currentFormId,
   onSelect,
   shiny,
@@ -28,55 +76,71 @@ export function FormPicker({
 }: Props) {
   const { t } = useLanguage();
   return (
-    <section aria-label={t("detail.forms")} className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold text-muted">{t("detail.forms")}</h3>
-      <ul className="flex flex-wrap gap-2">
-        {forms.length > 1 &&
-          forms.map((form) => {
-            const active = form.id === currentFormId;
-            const item = formItem(form.name);
-            return (
-              <li key={form.id} className="flex">
-                <button
-                  type="button"
-                  onClick={() => onSelect(form.id)}
-                  aria-pressed={active}
-                  title={item ? formatName(item) : undefined}
-                  className={`${CHIP} ${
+    <section
+      aria-label={t("detail.forms")}
+      className="flex min-w-0 flex-col gap-3"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-muted">
+          {t("detail.forms")}
+        </h3>
+        {shiny !== null && (
+          <button
+            type="button"
+            onClick={onToggleShiny}
+            aria-pressed={shiny}
+            className={`${CHIP} ${
+              shiny
+                ? "border-selected bg-selected text-selected-text"
+                : "border-border hover:bg-surface-muted"
+            }`}
+          >
+            <SparkleIcon />
+            {t("detail.shiny")}
+          </button>
+        )}
+      </div>
+      <ul
+        tabIndex={forms.length > 4 ? 0 : undefined}
+        className="flex min-w-0 max-w-full flex-wrap gap-2 focus-visible:outline-2 focus-visible:outline-selected sm:max-w-[21.5rem] sm:flex-nowrap sm:overflow-x-auto sm:pb-1"
+      >
+        {forms.map((form) => {
+          const active = form.id === currentFormId;
+          const label = form.isDefault
+            ? t("detail.formDefault")
+            : formatFormLabel(speciesName, form.name);
+          return (
+            <li key={form.id} className="flex w-20 sm:shrink-0">
+              <button
+                type="button"
+                onClick={() => onSelect(form.id)}
+                aria-pressed={active}
+                className="group flex w-full flex-col items-center gap-1.5 rounded-xl text-center text-xs focus-visible:outline-2 focus-visible:outline-selected"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors ${
                     active
-                      ? "border-selected bg-selected text-selected-text"
-                      : "border-border hover:bg-surface-muted"
+                      ? "border-selected bg-surface-muted"
+                      : "border-border group-hover:border-muted group-hover:bg-surface-muted"
                   }`}
                 >
-                  {/* Bigger than the text line but pulled into the padding, so the chip
-                      keeps the height of the others. */}
-                  {item && (
-                    <ItemSprite item={item} size={28} className="-my-1" />
-                  )}
-                  {form.isDefault
-                    ? t("detail.formDefault")
-                    : formatFormLabel(speciesName, form.name)}
-                </button>
-              </li>
-            );
-          })}
-        {shiny !== null && (
-          <li className="flex">
-            <button
-              type="button"
-              onClick={onToggleShiny}
-              aria-pressed={shiny}
-              className={`${CHIP} ${
-                shiny
-                  ? "border-selected bg-selected text-selected-text"
-                  : "border-border hover:bg-surface-muted"
-              }`}
-            >
-              <SparkleIcon />
-              {t("detail.shiny")}
-            </button>
-          </li>
-        )}
+                  <FormSpriteImage
+                    key={`${form.id}:${game ?? ""}:${shiny === true}:${showSprite}:${!active}`}
+                    form={sprites.find((sprite) => sprite.id === form.id)}
+                    game={game}
+                    showSprite={showSprite}
+                    shiny={shiny === true}
+                    fallbackToLatestGameSprite={!active}
+                  />
+                </span>
+                <span className="w-full break-words leading-tight">
+                  {label}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

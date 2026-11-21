@@ -1,12 +1,15 @@
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePokemonEvolutionSprites } from "@/hooks/usePokemonEvolutionSprites";
 import { pickText } from "@/lib/i18n/languages";
-import type { EvolutionNode } from "@/lib/pokeapi/detail";
+import type { EvolutionNode, PokemonFormSprites } from "@/lib/pokeapi/detail";
 import { artworkUrl, formatName, formatNumber } from "@/lib/pokedex/format";
+import { formSpriteCandidates } from "@/lib/pokedex/game-detail";
 import {
   evolutionForForm,
   evolutionIds,
+  evolutionSpriteIds,
   evolutionSteps,
   type EvolutionStep,
 } from "@/lib/pokedex/evolution";
@@ -26,6 +29,8 @@ type Props = {
   onSetShiny: (ids: readonly number[], on: boolean) => void;
   /** The game chosen in the window; picks the ways to evolve that apply. */
   game: string | null;
+  /** Whether game sprites or artwork are selected in the window. */
+  showSprite: boolean;
 };
 
 /** One way of evolving: its item pictures with the words under them. */
@@ -128,12 +133,18 @@ function EvolutionButton({
   current,
   onSelect,
   shiny,
+  game,
+  showSprite,
+  sprite,
 }: {
   node: EvolutionNode;
   current: boolean;
   /** `formId` is set for a regional form such as Alolan Ninetales. */
   onSelect: (id: number, formId?: number) => void;
   shiny: boolean;
+  game: string | null;
+  showSprite: boolean;
+  sprite: PokemonFormSprites | undefined;
 }) {
   const { language } = useLanguage();
   const name = pickText(node.names, language) ?? formatName(node.name);
@@ -142,21 +153,57 @@ function EvolutionButton({
       type="button"
       onClick={() => onSelect(node.id, node.formId)}
       aria-current={current ? "true" : undefined}
-      className={`flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-selected ${
-        current ? "border-selected bg-surface-muted" : "border-border"
+      className={`flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors hover:border-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-selected ${
+        current
+          ? "border-selected bg-surface-muted"
+          : "border-border"
       }`}
     >
-      <Image
-        src={artworkUrl(node.formId ?? node.id, shiny)}
-        alt=""
-        width={96}
-        height={96}
-        className="size-20 object-contain"
+      <EvolutionSprite
+        key={`${node.formId ?? node.id}:${game ?? ""}:${shiny}:${showSprite}:${sprite ? JSON.stringify(sprite) : ""}`}
+        id={node.formId ?? node.id}
+        sprite={sprite}
+        game={game}
+        shiny={shiny}
+        showSprite={showSprite}
       />
       <span className="text-xs text-muted">{formatNumber(node.id)}</span>
       <span className="text-sm font-medium">{name}</span>
     </button>
   );
+}
+
+function EvolutionSprite({
+  id,
+  sprite,
+  game,
+  shiny,
+  showSprite,
+}: {
+  id: number;
+  sprite: PokemonFormSprites | undefined;
+  game: string | null;
+  shiny: boolean;
+  showSprite: boolean;
+}) {
+  const [failedCount, setFailedCount] = useState(0);
+  const candidates = sprite
+    ? formSpriteCandidates(sprite, game, shiny, showSprite)
+    : [];
+  const fallbackArtwork = artworkUrl(id, shiny);
+  if (!candidates.includes(fallbackArtwork)) candidates.push(fallbackArtwork);
+  const src = candidates[failedCount];
+  return src ? (
+    <Image
+      src={src}
+      alt=""
+      width={96}
+      height={96}
+      unoptimized
+      className={`size-20 object-contain ${showSprite ? "[image-rendering:pixelated]" : ""}`}
+      onError={() => setFailedCount((count) => count + 1)}
+    />
+  ) : null;
 }
 
 function Branch({
@@ -165,6 +212,8 @@ function Branch({
   onSelect,
   shinyIds,
   game,
+  showSprite,
+  sprites,
 }: {
   node: EvolutionNode;
   currentId: number;
@@ -172,6 +221,8 @@ function Branch({
   onSelect: (id: number, formId?: number) => void;
   shinyIds: ReadonlySet<number>;
   game: string | null;
+  showSprite: boolean;
+  sprites: ReadonlyMap<number, PokemonFormSprites>;
 }) {
   return (
     <div className="flex flex-col items-center gap-2 sm:flex-row">
@@ -180,6 +231,9 @@ function Branch({
         current={node.id === currentId}
         onSelect={onSelect}
         shiny={shinyIds.has(node.id)}
+        game={game}
+        showSprite={showSprite}
+        sprite={sprites.get(node.formId ?? node.id)}
       />
       {node.evolvesTo.length >= GRID_FROM && (
         <>
@@ -197,6 +251,8 @@ function Branch({
                   onSelect={onSelect}
                   shinyIds={shinyIds}
                   game={game}
+                  showSprite={showSprite}
+                  sprites={sprites}
                 />
               </div>
             ))}
@@ -227,6 +283,8 @@ function Branch({
                 onSelect={onSelect}
                 shinyIds={shinyIds}
                 game={game}
+                showSprite={showSprite}
+                sprites={sprites}
               />
             </div>
           ))}
@@ -295,8 +353,11 @@ export function EvolutionChain({
   shinyIds,
   onSetShiny,
   game,
+  showSprite,
 }: Props) {
   const root = useFamilyRoot(familyRoot, formName, currentId);
+  const spriteIds = useMemo(() => evolutionSpriteIds(root), [root]);
+  const { sprites } = usePokemonEvolutionSprites(spriteIds);
   return (
     <div className="flex flex-col gap-3">
       {/* On a phone the button sits above the chain; from sm up it is in the
@@ -316,6 +377,8 @@ export function EvolutionChain({
           onSelect={onSelect}
           shinyIds={shinyIds}
           game={game}
+          showSprite={showSprite}
+          sprites={sprites}
         />
       </div>
     </div>

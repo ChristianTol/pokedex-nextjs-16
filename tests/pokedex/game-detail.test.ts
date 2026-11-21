@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { PokemonDetail } from "@/lib/pokeapi/detail";
+import type {
+  PokemonDetail,
+  PokemonFormSprites,
+} from "@/lib/pokeapi/detail";
 import {
   abilitiesForGeneration,
   descriptionForGame,
   detailForGame,
+  formSpriteCandidates,
+  hasSpriteToggle,
   spriteForGame,
+  spriteForGameOrLatest,
   statsForGeneration,
 } from "@/lib/pokedex/game-detail";
 
@@ -236,6 +242,137 @@ describe("descriptionForGame", () => {
       text: "最新",
       fromGame: null,
     });
+  });
+});
+
+describe("formSpriteCandidates", () => {
+  const form = (
+    overrides: Partial<PokemonFormSprites> = {},
+  ): PokemonFormSprites => ({
+    id: 25,
+    gameSprites: {
+      "red-blue": { front: "/red.png", shiny: "/red-shiny.png" },
+      "sword-shield": { front: "/sword.png", shiny: null },
+    },
+    defaultSprite: "/default.png",
+    shinyDefaultSprite: "/default-shiny.png",
+    artwork: "/artwork.png",
+    shinyArtwork: "/artwork-shiny.png",
+    ...overrides,
+  });
+
+  it("uses the selected game's shiny sprite before the default sprite", () => {
+    expect(formSpriteCandidates(form(), "red-blue", true)).toEqual([
+      "/red-shiny.png",
+      "/default-shiny.png",
+      "/artwork-shiny.png",
+    ]);
+  });
+
+  it("falls back through default sprites and artwork when the game is missing", () => {
+    expect(formSpriteCandidates(form(), "scarlet-violet", false)).toEqual([
+      "/default.png",
+      "/artwork.png",
+    ]);
+    expect(formSpriteCandidates(form(), "scarlet-violet", true)).toEqual([
+      "/default-shiny.png",
+      "/artwork-shiny.png",
+    ]);
+  });
+
+  it("can fall back to the newest game sprite when the selected game has none", () => {
+    expect(formSpriteCandidates(form(), "scarlet-violet", false)).toEqual([
+      "/default.png",
+      "/artwork.png",
+    ]);
+    expect(
+      formSpriteCandidates(form(), "scarlet-violet", false, true, true),
+    ).toEqual(["/sword.png", "/default.png", "/artwork.png"]);
+    expect(
+      formSpriteCandidates(form(), "scarlet-violet", true, true, true),
+    ).toEqual([
+      "/sword.png",
+      "/default-shiny.png",
+      "/artwork-shiny.png",
+    ]);
+    expect(
+      formSpriteCandidates(form(), "red-blue", false, true, true),
+    ).toEqual(["/red.png", "/default.png", "/artwork.png"]);
+    expect(
+      formSpriteCandidates(form(), "scarlet-violet", false, false, true),
+    ).toEqual(["/artwork.png", "/sword.png", "/default.png"]);
+  });
+
+  it("uses the newest available game sprite when there is no selected game", () => {
+    expect(formSpriteCandidates(form(), null, false)[0]).toBe("/sword.png");
+  });
+
+  it("uses the same newest sprite for the main image when no game is selected", () => {
+    expect(spriteForGameOrLatest(form().gameSprites, null, false)).toBe(
+      "/sword.png",
+    );
+    expect(
+      spriteForGameOrLatest(
+        {
+          "red-blue": { front: "/red.png", shiny: "/red-shiny.png" },
+          "sword-shield": { front: "/sword.png", shiny: "/sword-shiny.png" },
+        },
+        null,
+        true,
+      ),
+    ).toBe("/sword-shiny.png");
+    expect(
+      spriteForGameOrLatest(
+        { "red-blue": { front: "/red.png", shiny: null } },
+        null,
+        true,
+      ),
+    ).toBe("/red.png");
+    expect(spriteForGameOrLatest({}, null, false)).toBeNull();
+    expect(
+      spriteForGameOrLatest(form().gameSprites, "red-blue", false),
+    ).toBe("/red.png");
+  });
+
+  it("does not offer an image toggle when the alternatives are identical", () => {
+    expect(hasSpriteToggle("/sprite.png", "/artwork.png")).toBe(true);
+    expect(hasSpriteToggle("/same.png", "/same.png")).toBe(false);
+    expect(hasSpriteToggle(null, "/artwork.png")).toBe(false);
+  });
+
+  it("prefers artwork when artwork mode is selected", () => {
+    expect(formSpriteCandidates(form(), "red-blue", false, false)).toEqual([
+      "/artwork.png",
+      "/red.png",
+      "/default.png",
+    ]);
+  });
+
+  it("falls back to available sprites if the preferred artwork is missing", () => {
+    expect(
+      formSpriteCandidates(
+        form({ artwork: null, shinyArtwork: null }),
+        "red-blue",
+        false,
+        false,
+      ),
+    ).toEqual(["/red.png", "/default.png"]);
+  });
+
+  it("returns no candidates when all sprite and artwork URLs are missing", () => {
+    expect(
+      formSpriteCandidates(
+        form({
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        }),
+        "red-blue",
+        false,
+      ),
+    ).toEqual([]);
   });
 });
 

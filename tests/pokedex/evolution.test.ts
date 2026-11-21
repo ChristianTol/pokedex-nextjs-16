@@ -3,6 +3,7 @@ import type { EvolutionMethod, EvolutionNode } from "@/lib/pokeapi/detail";
 import {
   evolutionForForm,
   evolutionIds,
+  evolutionSpriteIds,
   regionOf,
   evolutionSteps,
   itemSpriteUrl,
@@ -33,6 +34,18 @@ describe("evolutionIds", () => {
 
   it("is just the species for one that does not evolve", () => {
     expect(evolutionIds(node(132))).toEqual([132]);
+  });
+});
+
+describe("evolutionSpriteIds", () => {
+  it("uses regional form ids and deduplicates selected forms across branches", () => {
+    const root = node(37, [
+      { ...node(38), formId: 10009 },
+      { ...node(38), formId: 10009 },
+      node(39),
+    ]);
+
+    expect(evolutionSpriteIds(root)).toEqual([37, 10009, 39]);
   });
 });
 

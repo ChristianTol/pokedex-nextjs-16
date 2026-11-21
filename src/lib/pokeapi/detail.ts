@@ -108,6 +108,15 @@ export type PokemonForm = {
   isDefault: boolean;
 };
 
+export type PokemonFormSprites = {
+  id: number;
+  gameSprites: Record<string, GameSprite>;
+  defaultSprite: string | null;
+  shinyDefaultSprite: string | null;
+  artwork: string | null;
+  shinyArtwork: string | null;
+};
+
 /** Base stats of a generation and earlier: only the stats that differ from later ones. */
 export type PastStats = { generation: number; stats: PokemonStat[] };
 
@@ -516,6 +525,21 @@ export function parseGameSprites(
   return result;
 }
 
+export function parseFormSprites(
+  id: number,
+  pokemon: PokemonResponse,
+): PokemonFormSprites {
+  return {
+    id,
+    gameSprites: parseGameSprites(pokemon),
+    defaultSprite: pokemon.sprites.front_default,
+    shinyDefaultSprite: pokemon.sprites.front_shiny ?? null,
+    artwork: pokemon.sprites.other?.["official-artwork"]?.front_default ?? null,
+    shinyArtwork:
+      pokemon.sprites.other?.["official-artwork"]?.front_shiny ?? null,
+  };
+}
+
 const isSet = <T>(value: T | null | undefined | false | ""): value is T =>
   value !== null && value !== undefined && value !== false && value !== "";
 
@@ -790,6 +814,50 @@ export async function resolveForm(id: number, formId?: number) {
     throw new PokeApiError(`Pokémon ${id} has no form ${targetId}`, 404);
   }
   return { species, targetId };
+}
+
+/** Loads each variety's sprites independently so one missing form is harmless. */
+export async function getPokemonFormSprites(
+  id: number,
+): Promise<PokemonFormSprites[]> {
+  const { species } = await resolveForm(id);
+  const forms = parseForms(species);
+  return mapWithConcurrency(forms, 6, async (form) => {
+    try {
+      const pokemon = await fetchPokeApi<PokemonResponse>(`/pokemon/${form.id}`);
+      return parseFormSprites(form.id, pokemon);
+    } catch {
+      return {
+        id: form.id,
+        gameSprites: {},
+        defaultSprite: null,
+        shinyDefaultSprite: null,
+        artwork: null,
+        shinyArtwork: null,
+      };
+    }
+  });
+}
+
+/** Loads just the requested Pokémon sprites for evolution-chain cards. */
+export async function getPokemonSprites(
+  ids: readonly number[],
+): Promise<PokemonFormSprites[]> {
+  return mapWithConcurrency(ids, 6, async (id) => {
+    try {
+      const pokemon = await fetchPokeApi<PokemonResponse>(`/pokemon/${id}`);
+      return parseFormSprites(id, pokemon);
+    } catch {
+      return {
+        id,
+        gameSprites: {},
+        defaultSprite: null,
+        shinyDefaultSprite: null,
+        artwork: null,
+        shinyArtwork: null,
+      };
+    }
+  });
 }
 
 /** Details of a species; `formId` selects an alternative form. */

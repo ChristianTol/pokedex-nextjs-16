@@ -16,6 +16,7 @@ import { Select } from "@/components/Select";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePokemonDetail } from "@/hooks/usePokemonDetail";
+import { usePokemonFormSprites } from "@/hooks/usePokemonFormSprites";
 import { usePokemonMoves } from "@/hooks/usePokemonMoves";
 import { pickText, type LocalizedText } from "@/lib/i18n/languages";
 import type { PokemonIndexEntry } from "@/lib/pokeapi/index-list";
@@ -24,7 +25,8 @@ import { artworkUrl, formatName, formatNumber } from "@/lib/pokedex/format";
 import {
   descriptionForGame,
   detailForGame,
-  spriteForGame,
+  hasSpriteToggle,
+  spriteForGameOrLatest,
 } from "@/lib/pokedex/game-detail";
 import { formatGame, gameGeneration } from "@/lib/pokedex/games";
 import { typeBackground } from "@/lib/pokedex/type-colors";
@@ -35,7 +37,7 @@ import { CARD, PokemonDetails, PokemonFacts } from "./PokemonDetails";
 import {
   CrySkeleton,
   DetailsSkeleton,
-  FactsSkeleton,
+  FormPickerSkeleton,
   IntroSkeleton,
   TitleSkeleton,
 } from "./PokemonSkeleton";
@@ -167,6 +169,10 @@ export function PokemonModal({
   if (formChoice && formChoice.speciesId !== entry.id) setFormChoice(null);
   const formId = formChoice?.formId ?? null;
   const { detail, loading, failed, retry } = usePokemonDetail(entry.id, formId);
+  const { sprites: formSprites } = usePokemonFormSprites(
+    entry.id,
+    detail?.forms ?? [],
+  );
   // A regional form in the evolution chain opens that form, also on another species.
   const selectInChain = (id: number, regionalFormId?: number) => {
     if (regionalFormId !== undefined)
@@ -479,14 +485,15 @@ export function PokemonModal({
     };
   }, []);
 
-  const gameSprite =
-    detail && game ? spriteForGame(detail.gameSprites, game, shinyOn) : null;
-  // Which picture is large; a game without a sprite always shows the artwork.
+  const gameSprite = detail
+    ? spriteForGameOrLatest(detail.gameSprites, game, shinyOn)
+    : null;
   const [showSprite, setShowSprite] = useState(true);
   const spriteView = showSprite && gameSprite !== null;
   const artwork =
     (shinyOn ? detail?.shinyArtwork : detail?.artwork) ??
     artworkUrl(entry.id, shinyOn);
+  const showImageToggle = hasSpriteToggle(gameSprite, artwork);
 
   const name =
     pickText(detail?.names ?? initialNames, language) ?? formatName(entry.name);
@@ -649,7 +656,7 @@ export function PokemonModal({
                   priority
                 />
               )}
-              {gameSprite && game && (
+              {showImageToggle && gameSprite && (
                 <button
                   type="button"
                   onClick={() => setShowSprite(!spriteView)}
@@ -660,7 +667,9 @@ export function PokemonModal({
                   title={
                     spriteView
                       ? t("detail.showArtwork")
-                      : formatGame(game, language)
+                      : game
+                        ? formatGame(game, language)
+                        : t("detail.showSprite")
                   }
                   className="absolute bottom-0 right-0 size-14 rounded-xl border border-border/60 bg-surface/90 p-1 shadow-sm hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
                 >
@@ -713,23 +722,51 @@ export function PokemonModal({
                   <CryButton key={detail.cry} url={detail.cry} />
                 </div>
               )}
-              {/* Phones get these below the forms instead. */}
               {detail && (
-                <div className="hidden sm:block">
-                  <PokemonFacts detail={shown ?? detail} />
+                <div className={`hidden min-w-0 sm:block ${CARD}`}>
+                  <FormPicker
+                    speciesName={detail.speciesName}
+                    forms={detail.forms}
+                    sprites={formSprites}
+                    game={game}
+                    showSprite={showSprite}
+                    currentFormId={currentFormId ?? detail.pokemonId}
+                    onSelect={(selected) =>
+                      setFormChoice({ speciesId: entry.id, formId: selected })
+                    }
+                    shiny={detail.shinyArtwork !== null ? shinyOn : null}
+                    onToggleShiny={onToggleShiny}
+                  />
                 </div>
               )}
               {placeholders && (
-                <div className="hidden sm:block">
-                  <FactsSkeleton />
+                <div className={`hidden min-w-0 sm:block ${CARD}`}>
+                  <FormPickerSkeleton />
                 </div>
               )}
             </div>
           </header>
 
-          <div className="mb-6 grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <div className="mb-6 grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+            {detail && (
+              <div className={`sm:hidden ${CARD}`}>
+                <FormPicker
+                  speciesName={detail.speciesName}
+                  forms={detail.forms}
+                  sprites={formSprites}
+                  game={game}
+                  showSprite={showSprite}
+                  currentFormId={currentFormId ?? detail.pokemonId}
+                  onSelect={(selected) =>
+                    setFormChoice({ speciesId: entry.id, formId: selected })
+                  }
+                  shiny={detail.shinyArtwork !== null ? shinyOn : null}
+                  onToggleShiny={onToggleShiny}
+                />
+              </div>
+            )}
             {description.text && (
-              <div className={`${CARD} text-left`}>
+              <div className={`${CARD} text-left lg:self-start`}>
                 <p className="leading-relaxed">{description.text}</p>
                 {description.fromGame && (
                   <p className="mt-1 text-xs text-muted">
@@ -740,17 +777,8 @@ export function PokemonModal({
               </div>
             )}
             {detail && (
-              <div className={CARD}>
-                <FormPicker
-                  speciesName={detail.speciesName}
-                  forms={detail.forms}
-                  currentFormId={currentFormId ?? detail.pokemonId}
-                  onSelect={(selected) =>
-                    setFormChoice({ speciesId: entry.id, formId: selected })
-                  }
-                  shiny={detail.shinyArtwork !== null ? shinyOn : null}
-                  onToggleShiny={onToggleShiny}
-                />
+              <div className="hidden min-w-0 sm:block lg:self-center">
+                <PokemonFacts detail={shown ?? detail} />
               </div>
             )}
             {detail && (
@@ -788,6 +816,7 @@ export function PokemonModal({
                 shinyIds={shinyIds}
                 onSetShiny={onSetShiny}
                 game={game}
+                showSprite={showSprite}
               />
             </div>
           ) : failed ? (
