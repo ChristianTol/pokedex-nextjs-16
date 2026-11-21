@@ -505,6 +505,29 @@ export function parseShinyArtwork(pokemon: PokemonResponse): string | null {
   );
 }
 
+const KYUREM_SCARLET_VIOLET_SPRITE_BASE =
+  "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/";
+
+function correctKyuremScarletVioletSprite(
+  id: number,
+  game: string,
+  url: string,
+): string {
+  if (game !== "scarlet-violet" || (id !== 10022 && id !== 10023)) return url;
+
+  const otherId = id === 10022 ? 10023 : 10022;
+  const normalSprite = `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}${id}.webp`;
+  if (url === normalSprite) {
+    return `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}${otherId}.webp`;
+  }
+
+  const shinySprite = `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}shiny/${id}.webp`;
+  if (url === shinySprite) {
+    return `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}shiny/${otherId}.webp`;
+  }
+  return url;
+}
+
 /**
  * The front sprite per game, by the version key PokéAPI uses (it is spread
  * over generations). The menu "icons" are not game sprites.
@@ -517,8 +540,18 @@ export function parseGameSprites(
     for (const [key, sprite] of Object.entries(generation)) {
       if (key === "icons" || !sprite.front_default) continue;
       result[key] = {
-        front: sprite.front_default,
-        shiny: sprite.front_shiny ?? null,
+        front: correctKyuremScarletVioletSprite(
+          pokemon.id,
+          key,
+          sprite.front_default,
+        ),
+        shiny: sprite.front_shiny
+          ? correctKyuremScarletVioletSprite(
+              pokemon.id,
+              key,
+              sprite.front_shiny,
+            )
+          : null,
       };
     }
   }

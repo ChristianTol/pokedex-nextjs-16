@@ -377,8 +377,12 @@ describe("parseGenera", () => {
 });
 
 describe("parseGameSprites", () => {
-  const pokemon = (versions: Record<string, Record<string, object>>) =>
+  const pokemon = (
+    versions: Record<string, Record<string, object>>,
+    id = 1,
+  ) =>
     ({
+      id,
       sprites: { front_default: null, versions },
     }) as unknown as Parameters<typeof parseGameSprites>[0];
 
@@ -406,6 +410,92 @@ describe("parseGameSprites", () => {
     expect(
       parseGameSprites({ sprites: { front_default: null } } as never),
     ).toEqual({});
+  });
+
+  it("swaps only Black and White Kyurem Scarlet/Violet front sprite URLs", () => {
+    const sprites = (id: number) =>
+      parseGameSprites(
+        pokemon(
+          {
+            "generation-ix": {
+              "scarlet-violet": {
+                front_default: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/${id}.webp`,
+                front_shiny: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/${id}.webp`,
+              },
+            },
+          },
+          id,
+        ),
+      )["scarlet-violet"];
+
+    expect(sprites(10022)).toEqual({
+      front:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/10023.webp",
+      shiny:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/10023.webp",
+    });
+    expect(sprites(10023)).toEqual({
+      front:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/10022.webp",
+      shiny:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/10022.webp",
+    });
+  });
+
+  it("keeps all other Scarlet/Violet and game sprite URLs unchanged", () => {
+    const sprite = (id: number) =>
+      parseGameSprites(
+        pokemon(
+          {
+            "generation-ix": {
+              "scarlet-violet": {
+                front_default: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/${id}.webp`,
+                front_shiny: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/${id}.webp`,
+              },
+            },
+            "generation-viii": {
+              "sword-shield": {
+                front_default:
+                  "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/sword-shield/10022.png",
+                front_shiny:
+                  "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/sword-shield/shiny/10022.png",
+              },
+            },
+          },
+          id,
+        ),
+      );
+
+    expect(sprite(646)["scarlet-violet"]).toEqual({
+      front:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/646.webp",
+      shiny:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/646.webp",
+    });
+    expect(sprite(10022)["sword-shield"]).toEqual({
+      front:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/sword-shield/10022.png",
+      shiny:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-viii/sword-shield/shiny/10022.png",
+    });
+    expect(
+      parseGameSprites(
+        pokemon(
+          {
+            "generation-ix": {
+              "scarlet-violet": {
+                front_default: "https://example.test/10022.webp",
+                front_shiny: "https://example.test/shiny/10022.webp",
+              },
+            },
+          },
+          10022,
+        ),
+      )["scarlet-violet"],
+    ).toEqual({
+      front: "https://example.test/10022.webp",
+      shiny: "https://example.test/shiny/10022.webp",
+    });
   });
 });
 

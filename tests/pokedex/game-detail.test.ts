@@ -3,6 +3,7 @@ import type {
   PokemonDetail,
   PokemonFormSprites,
 } from "@/lib/pokeapi/detail";
+import { parseGameSprites } from "@/lib/pokeapi/detail";
 import {
   abilitiesForGeneration,
   descriptionForGame,
@@ -390,6 +391,39 @@ describe("spriteForGame", () => {
   it("uses the shiny sprite when there is one, else the normal one", () => {
     expect(spriteForGame(sprites, "gold-silver", true)).toBe("gold-s.png");
     expect(spriteForGame(sprites, "red-blue", true)).toBe("rb.png");
+  });
+
+  it("selects the corrected Scarlet/Violet Kyurem sprites, including shiny", () => {
+    const formSprites = (id: number) =>
+      parseGameSprites({
+        id,
+        sprites: {
+          front_default: null,
+          versions: {
+            "generation-ix": {
+              "scarlet-violet": {
+                front_default: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/${id}.webp`,
+                front_shiny: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/${id}.webp`,
+              },
+            },
+          },
+        },
+      } as unknown as Parameters<typeof parseGameSprites>[0]);
+    const blackKyuremSprites = formSprites(10022);
+    const whiteKyuremSprites = formSprites(10023);
+
+    expect(spriteForGame(blackKyuremSprites, "scarlet-violet", false)).toBe(
+      "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/10023.webp",
+    );
+    expect(spriteForGame(blackKyuremSprites, "scarlet-violet", true)).toBe(
+      "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/10023.webp",
+    );
+    expect(spriteForGame(whiteKyuremSprites, "scarlet-violet", false)).toBe(
+      "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/10022.webp",
+    );
+    expect(spriteForGame(whiteKyuremSprites, "scarlet-violet", true)).toBe(
+      "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/shiny/10022.webp",
+    );
   });
 
   it("borrows the sprites of the game a game shares them with", () => {
