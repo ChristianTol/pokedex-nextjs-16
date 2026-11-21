@@ -80,6 +80,42 @@ function FavoritesToggle({
   );
 }
 
+export function SearchField({
+  search,
+  label,
+  clearLabel,
+  onChange,
+}: {
+  search: string;
+  label: string;
+  clearLabel: string;
+  onChange: (next: Partial<Filters>) => void;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type="search"
+        inputMode="search"
+        value={search}
+        placeholder={label}
+        aria-label={label}
+        onChange={(event) => onChange({ search: event.target.value })}
+        className="filter-search w-full rounded-lg border border-border bg-surface px-3 py-1.5 pr-10 text-base text-foreground outline-none focus-visible:ring-2 focus-visible:ring-selected md:pr-3 md:text-sm"
+      />
+      {search !== "" && (
+        <button
+          type="button"
+          aria-label={clearLabel}
+          onClick={() => onChange({ search: "" })}
+          className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-selected md:hidden"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function FilterIcon() {
   return (
     <svg
@@ -126,14 +162,11 @@ export function FilterBar({
     );
 
   const search = (
-    <input
-      type="search"
-      inputMode="search"
-      value={filters.search}
-      placeholder={t("filters.search")}
-      aria-label={t("filters.search")}
-      onChange={(event) => onChange({ search: event.target.value })}
-      className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-selected"
+    <SearchField
+      search={filters.search}
+      label={t("filters.search")}
+      clearLabel={t("filters.clearSearch")}
+      onChange={onChange}
     />
   );
 
@@ -363,7 +396,7 @@ export function FilterBar({
       {/* Wider screens: everything in the bar. */}
       <div className="hidden flex-col gap-2 md:flex">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1.4fr] gap-2">
-          <Field label={t("filters.search")}>{search}</Field>
+          <div>{search}</div>
           {dropdowns(false)}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted">

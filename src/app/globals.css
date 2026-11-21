@@ -145,3 +145,11 @@ body {
     var(--font-geist-sans), Arial, Helvetica, "Hiragino Sans", "Yu Gothic",
     Meiryo, sans-serif;
 }
+
+@media (max-width: 47.999rem) {
+  .filter-search::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
