@@ -13,6 +13,7 @@ vi.mock("@/hooks/useLanguage", () => ({
       ({
         "detail.forms": "Vormen",
         "detail.formDefault": "Standaard",
+        "detail.loading": "Gegevens laden…",
         "detail.shiny": "Shiny",
       })[key] ?? key,
   }),
@@ -61,7 +62,7 @@ function renderPicker(
       speciesName: "charizard",
       forms,
       sprites,
-      formNamesLoading: false,
+      formDataLoading: false,
       game: "red-blue",
       showSprite: true,
       currentFormId: 6,
@@ -117,22 +118,22 @@ describe("FormPicker", () => {
     expect(markup).toContain(">Alolaans</span>");
   });
 
-  it("shows a name skeleton while non-default form names are loading", () => {
-    const markup = renderPicker({ formNamesLoading: true, sprites: [] });
+  it("shows the full forms skeleton while form data is loading", () => {
+    const markup = renderPicker({ formDataLoading: true, sprites: [] });
 
-    expect(markup).toContain(">Standaard</span>");
-    expect(markup).toContain(
-      'aria-hidden="true" class="skeleton mx-auto block h-4 w-16 rounded-md"',
-    );
-    expect(markup).not.toContain(">Mega X</span>");
-    expect(markup).not.toContain(">Gigantamax</span>");
-    expect(markup).toContain('aria-label="Mega X"');
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain("Gegevens laden…");
+    expect(markup.match(/skeleton size-20 rounded-lg/g)).toHaveLength(4);
+    expect(markup).not.toContain("Standaard");
+    expect(markup).not.toContain("Mega X");
+    expect(markup).not.toContain('type="button"');
+    expect(markup).not.toContain("<img");
   });
 
   it("shows the translated form label after loading", () => {
     languageState.language = "en";
     const markup = renderPicker({
-      formNamesLoading: false,
+      formDataLoading: false,
       sprites: [
         { ...sprites[1], names: { en: "Mega Venusaur" } },
       ],
@@ -140,14 +141,15 @@ describe("FormPicker", () => {
     languageState.language = "nl";
 
     expect(markup).toContain(">Mega Venusaur X</span>");
-    expect(markup).not.toContain("skeleton mx-auto block h-4");
+    expect(markup).not.toContain("skeleton size-20 rounded-lg");
   });
 
   it("shows the fallback form label when name loading fails", () => {
-    const markup = renderPicker({ formNamesLoading: false, sprites: [] });
+    const markup = renderPicker({ formDataLoading: false, sprites: [] });
 
     expect(markup).toContain(">Mega X</span>");
-    expect(markup).not.toContain("skeleton mx-auto block h-4");
+    expect(markup).not.toContain('aria-label="Mega X"');
+    expect(markup).not.toContain("skeleton size-20 rounded-lg");
   });
 
   it("keeps the selected form aligned with the selected game's sprite", () => {

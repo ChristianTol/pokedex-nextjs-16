@@ -171,7 +171,7 @@ export function PokemonModal({
   const { detail, loading, failed, retry } = usePokemonDetail(entry.id, formId);
   const {
     sprites: formSprites,
-    loading: formNamesLoading,
+    loading: formDataLoading,
   } = usePokemonFormSprites(
     entry.id,
     detail?.forms ?? [],
@@ -731,7 +731,7 @@ export function PokemonModal({
                     speciesName={detail.speciesName}
                     forms={detail.forms}
                     sprites={formSprites}
-                    formNamesLoading={formNamesLoading}
+                    formDataLoading={formDataLoading}
                     game={game}
                     showSprite={showSprite}
                     currentFormId={currentFormId ?? detail.pokemonId}
@@ -758,7 +758,7 @@ export function PokemonModal({
                   speciesName={detail.speciesName}
                   forms={detail.forms}
                   sprites={formSprites}
-                  formNamesLoading={formNamesLoading}
+                  formDataLoading={formDataLoading}
                   game={game}
                   showSprite={showSprite}
                   currentFormId={currentFormId ?? detail.pokemonId}

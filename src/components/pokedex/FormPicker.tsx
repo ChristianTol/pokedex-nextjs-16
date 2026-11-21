@@ -7,13 +7,14 @@ import type {
 } from "@/lib/pokeapi/detail";
 import { formatFormLabel } from "@/lib/pokedex/format";
 import { formSpriteCandidates } from "@/lib/pokedex/game-detail";
+import { FormPickerSkeleton } from "./PokemonSkeleton";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
   speciesName: string;
   forms: PokemonForm[];
   sprites: PokemonFormSprites[];
-  formNamesLoading: boolean;
+  formDataLoading: boolean;
   game: string | null;
   showSprite: boolean;
   currentFormId: number;
@@ -68,7 +69,7 @@ export function FormPicker({
   speciesName,
   forms,
   sprites,
-  formNamesLoading,
+  formDataLoading,
   game,
   showSprite,
   currentFormId,
@@ -77,6 +78,15 @@ export function FormPicker({
   onToggleShiny,
 }: Props) {
   const { language, t } = useLanguage();
+  if (formDataLoading) {
+    return (
+      <div role="status">
+        <span className="sr-only">{t("detail.loading")}</span>
+        <FormPickerSkeleton />
+      </div>
+    );
+  }
+
   return (
     <section
       aria-label={t("detail.forms")}
@@ -124,7 +134,6 @@ export function FormPicker({
               <button
                 type="button"
                 onClick={() => onSelect(form.id)}
-                aria-label={label}
                 aria-pressed={active}
                 className="group flex w-full flex-col items-center gap-1.5 rounded-xl text-center text-xs focus-visible:outline-2 focus-visible:outline-selected"
               >
@@ -146,14 +155,7 @@ export function FormPicker({
                   />
                 </span>
                 <span className="w-full break-words leading-tight">
-                  {formNamesLoading && !form.isDefault ? (
-                    <span
-                      aria-hidden="true"
-                      className="skeleton mx-auto block h-4 w-16 rounded-md"
-                    />
-                  ) : (
-                    label
-                  )}
+                  {label}
                 </span>
               </button>
             </li>
