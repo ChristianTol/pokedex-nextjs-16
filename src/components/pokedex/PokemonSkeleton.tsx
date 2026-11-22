@@ -119,7 +119,7 @@ export function IntroSkeleton() {
   );
 }
 
-/** Stats, evolution, abilities, matchups and moves. */
+/** Stats, evolution, abilities, matchups, training advice and moves. */
 export function DetailsSkeleton() {
   const { t } = useLanguage();
   return (
@@ -157,6 +157,14 @@ export function DetailsSkeleton() {
         </SectionSkeleton>
         <SectionSkeleton title={t("detail.matchups")}>
           <Bar className="h-24 w-full" />
+        </SectionSkeleton>
+        <SectionSkeleton title={t("detail.trainingAdvice")}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Bar className="h-44 w-full" />
+            <Bar className="h-44 w-full" />
+          </div>
+          <Bar className="h-4 w-3/4" />
+          <Bar className="h-4 w-36" />
         </SectionSkeleton>
         <SectionSkeleton title={t("detail.moves")}>
           <Bar className="h-48 w-full" />

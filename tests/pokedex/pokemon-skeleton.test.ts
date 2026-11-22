@@ -35,4 +35,22 @@ describe("IntroSkeleton", () => {
     expect(sections[0]?.[1]).toContain("lg:self-center");
     expect(sections[1]?.[1]).not.toContain("lg:self-center");
   });
+
+  it("includes a training-advice placeholder", () => {
+    const markup = renderToStaticMarkup(createElement(DetailsSkeleton));
+    const sectionTitles = [
+      ...markup.matchAll(/<h3 class="text-sm font-semibold text-muted[^\"]*">([^<]+)<\/h3>/g),
+    ].map(([, title]) => title);
+
+    expect(markup).toContain("Nature- en EV-richtlijn");
+    expect(sectionTitles.slice(-4)).toEqual([
+      "Abilities",
+      "Sterktes en zwaktes",
+      "Nature- en EV-richtlijn",
+      "Moves",
+    ]);
+    expect(markup.match(/skeleton rounded-md h-44 w-full/g)).toHaveLength(2);
+    expect(markup).toContain('class="skeleton rounded-md h-4 w-3/4"');
+    expect(markup).toContain('class="skeleton rounded-md h-4 w-36"');
+  });
 });

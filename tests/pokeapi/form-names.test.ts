@@ -17,8 +17,9 @@ vi.mock("@/lib/pokeapi/client", () => ({
 
 import { getPokemonFormSprites } from "@/lib/pokeapi/detail";
 
-const pokemon = (id: number) => ({
+const pokemon = (id: number, name: string) => ({
   id,
+  name,
   forms: [{ url: `https://pokeapi.co/api/v2/pokemon-form/${id}/` }],
   sprites: { front_default: `/pokemon-${id}.png`, versions: {} },
 });
@@ -47,8 +48,9 @@ describe("getPokemonFormSprites form names", () => {
           ],
         };
       }
-      if (path === "/pokemon/6") return pokemon(6);
-      if (path === "/pokemon/10034") return pokemon(10034);
+      if (path === "/pokemon/6") return pokemon(6, "charizard");
+      if (path === "/pokemon/10034")
+        return pokemon(10034, "charizard-mega-x");
       if (path === "/pokemon-form/6") {
         return {
           form_names: [

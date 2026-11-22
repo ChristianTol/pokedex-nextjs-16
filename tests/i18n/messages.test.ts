@@ -36,6 +36,38 @@ describe("messages", () => {
     expect(translate("ko", "detail.gameDescription")).toBe("게임 설명");
   });
 
+  it("provides localized training advice and nature labels in every language", () => {
+    for (const language of LANGUAGES) {
+      expect(translate(language, "detail.trainingAdvice")).toBeTruthy();
+      expect(translate(language, "detail.trainingAdviceSummary")).toBeTruthy();
+      expect(translate(language, "detail.offensiveExample")).toBeTruthy();
+      expect(translate(language, "detail.defensiveExample")).toBeTruthy();
+      expect(translate(language, "detail.recommendedNature")).toBeTruthy();
+      expect(translate(language, "detail.natureRaises")).toBeTruthy();
+      expect(translate(language, "detail.natureLowers")).toBeTruthy();
+      expect(translate(language, "detail.evs")).toBeTruthy();
+      expect(translate(language, "detail.suggestedMoves")).toBeTruthy();
+      expect(translate(language, "detail.suggestedMovesLoading")).toBeTruthy();
+      expect(translate(language, "detail.suggestedMovesError")).toBeTruthy();
+      expect(translate(language, "detail.noSuggestedMoves")).toBeTruthy();
+      expect(translate(language, "detail.trainingAdviceCaveat")).toBeTruthy();
+      expect(translate(language, "detail.trainingAdviceMoreInfo")).toBeTruthy();
+      expect(translate(language, "detail.noTrainingAdvice")).toBeTruthy();
+      expect(translate(language, "nature.adamant")).toBeTruthy();
+      expect(translate(language, "nature.bold")).toBeTruthy();
+      expect(translate(language, "nature.calm")).toBeTruthy();
+      expect(translate(language, "nature.careful")).toBeTruthy();
+      expect(translate(language, "nature.impish")).toBeTruthy();
+      expect(translate(language, "nature.jolly")).toBeTruthy();
+      expect(translate(language, "nature.modest")).toBeTruthy();
+      expect(translate(language, "nature.timid")).toBeTruthy();
+    }
+
+    expect(translate("nl", "nature.adamant")).toBe("Adamant");
+    expect(translate("en", "nature.adamant")).toBe("Adamant");
+    expect(translate("en", "detail.suggestedMoves")).toBe("Suggested moves");
+  });
+
   it("provides localized matchup explanations and damage labels", () => {
     expect(translate("nl", "matchup.offenseDescription")).toContain("eigen Pokémon-types");
     expect(translate("en", "matchup.offenseDescription")).toContain("own types");

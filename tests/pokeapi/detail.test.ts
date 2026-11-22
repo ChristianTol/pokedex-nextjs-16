@@ -700,7 +700,7 @@ describe("parseDetail games", () => {
 
 describe("parseShinyArtwork", () => {
   const pokemon = (sprites: Parameters<typeof parseArtwork>[0]["sprites"]) =>
-    ({ sprites }) as Parameters<typeof parseArtwork>[0];
+    ({ name: "pikachu", sprites }) as Parameters<typeof parseArtwork>[0];
 
   it("prefers the official shiny artwork, then the shiny sprite", () => {
     expect(

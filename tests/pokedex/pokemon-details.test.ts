@@ -9,6 +9,7 @@ import {
 } from "@/components/pokedex/PokemonDetails";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
+import type { MoveInfo, PokemonMoves } from "@/lib/pokeapi/moves";
 
 vi.mock("@/components/pokedex/EvolutionChain", () => ({
   EvolutionChain: () => null,
@@ -24,12 +25,16 @@ vi.mock("@/components/pokedex/TypeMatchups", () => ({
 }));
 
 describe("PokemonDetails", () => {
-  const render = (detail: PokemonDetail, game: string | null) =>
+  const render = (
+    detail: PokemonDetail,
+    game: string | null,
+    moves: PokemonMovesState = {} as PokemonMovesState,
+  ) =>
     renderToStaticMarkup(
       createElement(PokemonDetails, {
         detail,
         onSelectPokemon: () => {},
-        moves: {} as PokemonMovesState,
+        moves,
         shinyIds: new Set<number>(),
         onSetShiny: () => {},
         game,
@@ -52,6 +57,206 @@ describe("PokemonDetails", () => {
 
     expect(sections[0]?.[1]).toContain("lg:self-center");
     expect(sections[1]?.[1]).not.toContain("lg:self-center");
+  });
+
+  it("shows clearly qualified offensive and defensive examples for supported games", () => {
+    const detail = {
+      stats: [
+        { name: "hp", value: 80 },
+        { name: "attack", value: 130 },
+        { name: "defense", value: 80 },
+        { name: "special-attack", value: 60 },
+        { name: "special-defense", value: 80 },
+        { name: "speed", value: 100 },
+      ],
+      evolution: {},
+      name: "charizard",
+      id: 6,
+      pokemonId: 6,
+      abilities: [],
+      matchups: [],
+    } as unknown as PokemonDetail;
+
+    const markup = render(detail, "sword-shield");
+    const sectionTitles = [
+      ...markup.matchAll(/<h3 class="text-sm font-semibold text-muted[^\"]*">([^<]+)<\/h3>/g),
+    ].map(([, title]) => title);
+
+    expect(markup).toContain("Nature- en EV-richtlijn");
+    expect(sectionTitles.slice(-4)).toEqual([
+      "Abilities",
+      "Sterktes en zwaktes",
+      "Nature- en EV-richtlijn",
+      "Moves",
+    ]);
+    expect(markup).toContain(
+      "Voorbeelden op basis van basisstats en beschikbare moves; niet competitief geoptimaliseerd.",
+    );
+    expect(markup).toContain("rounded-xl border border-border/50 p-4");
+    expect(markup).toContain("Aanvallend voorbeeld");
+    expect(markup).toContain('tracking-tight">Jolly</p>');
+    expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Snelheid");
+    expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
+    expect(markup).toContain(
+      '<span class="truncate">Aanval</span><span class="font-semibold tabular-nums">252</span>',
+    );
+    expect(markup).toContain(
+      '<span class="truncate">Snelheid</span><span class="font-semibold tabular-nums">252</span>',
+    );
+    expect(markup).toContain("style=\"width:100%\"");
+    expect(markup).toContain(
+      '<span class="truncate">HP</span><span class="font-semibold tabular-nums">4</span>',
+    );
+    expect(markup).toContain("Verdedigend voorbeeld");
+    expect(markup).toContain('tracking-tight">Impish</p>');
+    expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Verdediging");
+    expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
+    expect(markup).toContain(
+      '<span class="truncate">Verdediging</span><span class="font-semibold tabular-nums">252</span>',
+    );
+    expect(markup).toContain(
+      '<span class="truncate">Speciale verdediging</span><span class="font-semibold tabular-nums">4</span>',
+    );
+    expect(markup).toContain("Over deze voorbeelden");
+    expect(markup).not.toContain("Gebalanceerd alternatief");
+    expect(markup).not.toContain("128 Verdediging");
+    expect(markup).not.toContain("128 Speciale verdediging");
+    expect(markup).toContain("egg moves zijn niet meegenomen");
+  });
+
+  it("shows game-specific suggestions and does not show stale moves while loading", () => {
+    const detail = {
+      stats: [
+        { name: "hp", value: 80 },
+        { name: "attack", value: 130 },
+        { name: "defense", value: 80 },
+        { name: "special-attack", value: 60 },
+        { name: "special-defense", value: 80 },
+        { name: "speed", value: 100 },
+      ],
+      types: ["fire"],
+      evolution: {},
+      name: "charizard",
+      id: 6,
+      pokemonId: 6,
+      abilities: [],
+      matchups: [],
+    } as unknown as PokemonDetail;
+    const move: MoveInfo = {
+      name: "flamethrower",
+      names: { en: "Flamethrower" },
+      type: "fire",
+      damageClass: "special",
+      power: 90,
+      accuracy: 100,
+      pp: 15,
+      descriptions: {},
+      effects: {},
+      effectChance: null,
+      priority: 0,
+      target: "selected-pokemon",
+    };
+    const secondMove: MoveInfo = {
+      ...move,
+      name: "brick-break",
+      names: { en: "Brick Break" },
+      type: "fighting",
+      damageClass: "physical",
+      power: 75,
+    };
+    const moves: PokemonMoves = {
+      games: ["sword-shield"],
+      game: "sword-shield",
+      levelUp: [
+        { move: move.name, level: 1 },
+        { move: secondMove.name, level: 1 },
+      ],
+      tutor: [],
+      machine: [],
+      moves: { [move.name]: move, [secondMove.name]: secondMove },
+    };
+
+    const currentMarkup = render(
+      detail,
+      "sword-shield",
+      { data: moves, loading: false, failed: false, retry: () => {} },
+    );
+    expect(currentMarkup).toContain("Movesuggesties");
+    expect(currentMarkup).toContain("Flamethrower");
+    expect(currentMarkup).toContain(
+      "rounded-full border border-border/50 bg-surface-muted px-2.5 py-1 text-xs font-medium",
+    );
+    expect(currentMarkup).toContain(
+      "%2Fsprites%2Ftypes%2Fgeneration-viii%2Fsword-shield%2Fsmall%2F10.png",
+    );
+    expect(currentMarkup).toContain(
+      "%2Fsprites%2Ftypes%2Fgeneration-viii%2Fsword-shield%2Fsmall%2F2.png",
+    );
+    expect(currentMarkup).toContain('<span class="sr-only">Vuur</span>');
+    expect(currentMarkup).toContain('<span class="sr-only">Vechter</span>');
+    expect(currentMarkup).toContain("Brick Break");
+
+    const staleMarkup = render(
+      detail,
+      "scarlet-violet",
+      { data: moves, loading: true, failed: false, retry: () => {} },
+    );
+    expect(staleMarkup).toContain("Moves voor advies laden…");
+    expect(staleMarkup).not.toContain("Flamethrower");
+
+    const failedMarkup = render(
+      detail,
+      "scarlet-violet",
+      { data: moves, loading: false, failed: true, retry: () => {} },
+    );
+    expect(failedMarkup).toContain("Moves voor dit spel konden niet worden geladen.");
+    expect(failedMarkup).not.toContain("Flamethrower");
+  });
+
+  it("keeps the offensive example when defensive stats are missing", () => {
+    const detail = {
+      stats: [
+        { name: "hp", value: 80 },
+        { name: "attack", value: 130 },
+        { name: "special-attack", value: 60 },
+        { name: "special-defense", value: 80 },
+        { name: "speed", value: 100 },
+      ],
+      evolution: {},
+      name: "charizard",
+      id: 6,
+      pokemonId: 6,
+      abilities: [],
+      matchups: [],
+    } as unknown as PokemonDetail;
+
+    const markup = render(detail, "sword-shield");
+
+    expect(markup).toContain("Aanvallend voorbeeld");
+    expect(markup).toContain('tracking-tight">Jolly</p>');
+    expect(markup).toContain("Verdedigend voorbeeld");
+    expect(markup).toContain("Geen toepasbare nature- of EV-richtlijn beschikbaar.");
+  });
+
+  it("explains when traditional EV advice is unavailable for the selected game", () => {
+    const detail = {
+      stats: [
+        { name: "hp", value: 80 },
+        { name: "attack", value: 100 },
+        { name: "special-attack", value: 70 },
+        { name: "speed", value: 50 },
+      ],
+      evolution: {},
+      name: "pikachu",
+      id: 25,
+      pokemonId: 25,
+      abilities: [],
+      matchups: [],
+    } as unknown as PokemonDetail;
+
+    expect(render(detail, "legends-arceus")).toContain(
+      "Geen toepasbare nature- of EV-richtlijn beschikbaar.",
+    );
   });
 
   it("shows game descriptions by default and offers the general-effect mode", () => {
