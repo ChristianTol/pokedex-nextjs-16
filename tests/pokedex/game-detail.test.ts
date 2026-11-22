@@ -82,6 +82,7 @@ const ability = (
   hidden,
   names: {},
   descriptions,
+  effectDescriptions: {},
   gameDescriptions,
 });
 

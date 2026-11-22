@@ -14,6 +14,28 @@ describe("messages", () => {
     expect(translate("ko", "detail.height")).toBe("키");
   });
 
+  it("translates the general ability effect label in every language", () => {
+    expect(translate("nl", "detail.abilityEffect")).toBe("Algemeen effect");
+    expect(translate("en", "detail.abilityEffect")).toBe("General effect");
+    expect(translate("de", "detail.abilityEffect")).toBe("Allgemeiner Effekt");
+    expect(translate("fr", "detail.abilityEffect")).toBe("Effet général");
+    expect(translate("ja", "detail.abilityEffect")).toBe("一般的な効果");
+    expect(translate("es", "detail.abilityEffect")).toBe("Efecto general");
+    expect(translate("it", "detail.abilityEffect")).toBe("Effetto generale");
+    expect(translate("ko", "detail.abilityEffect")).toBe("일반 효과");
+  });
+
+  it("translates the game ability description label in every language", () => {
+    expect(translate("nl", "detail.gameDescription")).toBe("Spelbeschrijving");
+    expect(translate("en", "detail.gameDescription")).toBe("Game description");
+    expect(translate("de", "detail.gameDescription")).toBe("Spielbeschreibung");
+    expect(translate("fr", "detail.gameDescription")).toBe("Description du jeu");
+    expect(translate("ja", "detail.gameDescription")).toBe("ゲーム内説明");
+    expect(translate("es", "detail.gameDescription")).toBe("Descripción del juego");
+    expect(translate("it", "detail.gameDescription")).toBe("Descrizione del gioco");
+    expect(translate("ko", "detail.gameDescription")).toBe("게임 설명");
+  });
+
   it("has no empty texts in any language", () => {
     for (const language of LANGUAGES) {
       expect(translateOptional(language, "app.title")).toBeTruthy();

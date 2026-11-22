@@ -30,6 +30,8 @@ export type PokemonAbility = {
   hidden: boolean;
   names: LocalizedText;
   descriptions: LocalizedText;
+  /** Full general effect, separate from short and game-specific descriptions. */
+  effectDescriptions: LocalizedText;
   /** Ability flavor text per PokéAPI version group. */
   gameDescriptions: Record<string, LocalizedText>;
 };
@@ -307,6 +309,7 @@ type EvolutionChainResponse = { chain: ChainLinkResponse };
 type AbilityResponse = {
   names: NameEntry[];
   effect_entries: {
+    effect: string;
     short_effect: string;
     language: { name: string };
   }[];
@@ -333,6 +336,15 @@ export function parseGenera(genera: SpeciesResponse["genera"]): LocalizedText {
 
 function cleanText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function cleanEffectText(text: string): string {
+  return text
+    .replace(/\u00ad/g, "")
+    .split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 /**
@@ -467,18 +479,22 @@ export function parseTypeChart(relations: TypeRelations): TypeChart {
 
 /**
  * Per language: the short effect when PokéAPI has one, otherwise the newest
- * flavor text (newer abilities only have flavor text).
+ * flavor text (newer abilities only have flavor text), plus the full effect.
  */
 export function parseAbilityTexts(ability: AbilityResponse): {
   names: LocalizedText;
   descriptions: LocalizedText;
+  effectDescriptions: LocalizedText;
   gameDescriptions: Record<string, LocalizedText>;
 } {
   const descriptions: LocalizedText = {};
+  const effectDescriptions: LocalizedText = {};
   for (const language of TEXT_LANGUAGES) {
     const effect = ability.effect_entries.find(
       (entry) => textLanguageOf(entry.language.name) === language,
     );
+    const fullEffect = effect && cleanEffectText(effect.effect);
+    if (fullEffect) effectDescriptions[language] = fullEffect;
     const flavor = ability.flavor_text_entries
       .filter((entry) => textLanguageOf(entry.language.name) === language)
       .at(-1);
@@ -506,6 +522,7 @@ export function parseAbilityTexts(ability: AbilityResponse): {
   return {
     names: parseLocalizedNames(ability.names),
     descriptions,
+    effectDescriptions,
     gameDescriptions,
   };
 }
@@ -751,6 +768,7 @@ type AbilityTexts = Record<
   {
     names: LocalizedText;
     descriptions: LocalizedText;
+    effectDescriptions: LocalizedText;
     gameDescriptions: Record<string, LocalizedText>;
   }
 >;
@@ -767,6 +785,7 @@ function parseAbility(
     hidden,
     names: texts[name]?.names ?? {},
     descriptions: texts[name]?.descriptions ?? {},
+    effectDescriptions: texts[name]?.effectDescriptions ?? {},
     gameDescriptions: texts[name]?.gameDescriptions ?? {},
   };
 }

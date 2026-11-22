@@ -1,6 +1,7 @@
+import { useEffect, useReducer } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
-import { pickText } from "@/lib/i18n/languages";
+import { pickText, type Language } from "@/lib/i18n/languages";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import { abilityDescriptionForGame } from "@/lib/pokedex/game-detail";
 import {
@@ -13,6 +14,47 @@ import { EvolutionChain, FamilyShinyButton } from "./EvolutionChain";
 import { PokemonMoves } from "./PokemonMoves";
 import { MAX_BASE_STAT, STAT_COLORS, STAT_LABELS } from "./stat-style";
 import { TypeMatchups } from "./TypeMatchups";
+
+export function abilityDescriptionForMode(
+  ability: PokemonDetail["abilities"][number],
+  game: string | null,
+  language: Language,
+  showGeneralEffect: boolean,
+): string | null {
+  const gameDescription = abilityDescriptionForGame(ability, game, language);
+  const effectDescription = pickText(ability.effectDescriptions, language);
+
+  return showGeneralEffect
+    ? effectDescription ?? gameDescription
+    : gameDescription ?? effectDescription;
+}
+
+export function toggleAbilityDescriptionMode(showGeneralEffect: boolean) {
+  return !showGeneralEffect;
+}
+
+type AbilityDescriptionModeState = {
+  game: string | null;
+  showGeneralEffect: boolean;
+};
+
+type AbilityDescriptionModeAction =
+  | { type: "reset"; game: string | null }
+  | { type: "toggle"; game: string | null };
+
+export function abilityDescriptionModeReducer(
+  state: AbilityDescriptionModeState,
+  action: AbilityDescriptionModeAction,
+): AbilityDescriptionModeState {
+  if (action.type === "reset" || state.game !== action.game) {
+    return { game: action.game, showGeneralEffect: false };
+  }
+
+  return {
+    ...state,
+    showGeneralEffect: toggleAbilityDescriptionMode(state.showGeneralEffect),
+  };
+}
 
 /** The surface every block of the window sits on. */
 export const CARD =
@@ -113,6 +155,24 @@ export function PokemonDetails({
   showSprite: boolean;
 }) {
   const { language, t } = useLanguage();
+  const [abilityDescriptionMode, dispatchAbilityDescriptionMode] = useReducer(
+    abilityDescriptionModeReducer,
+    game,
+    (currentGame): AbilityDescriptionModeState => ({
+      game: currentGame,
+      showGeneralEffect: false,
+    }),
+  );
+  const showGeneralEffect =
+    abilityDescriptionMode.game === game &&
+    abilityDescriptionMode.showGeneralEffect;
+
+  useEffect(() => {
+    if (abilityDescriptionMode.game !== game) {
+      dispatchAbilityDescriptionMode({ type: "reset", game });
+    }
+  }, [abilityDescriptionMode.game, game]);
+
   const statLabel = (name: string) => {
     const key = STAT_LABELS[name];
     return key ? t(key) : formatName(name);
@@ -170,31 +230,61 @@ export function PokemonDetails({
         </Section>
       </div>
 
-      <Section title={t("detail.abilities")}>
+      <Section
+        title={t("detail.abilities")}
+        action={
+          detail.abilities.some((ability) =>
+            pickText(ability.effectDescriptions, language),
+          ) ? (
+            <button
+              type="button"
+              aria-pressed={showGeneralEffect}
+              onClick={() =>
+                dispatchAbilityDescriptionMode({ type: "toggle", game })
+              }
+              className="rounded-full border border-border/50 px-3 py-1 text-xs text-muted transition hover:border-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              {t(
+                showGeneralEffect
+                  ? "detail.abilityEffect"
+                  : "detail.gameDescription",
+              )}
+            </button>
+          ) : undefined
+        }
+      >
         {detail.abilities.length === 0 ? (
           <p className="text-sm text-muted">{t("detail.noAbilities")}</p>
         ) : (
           <ul className="grid gap-3 lg:grid-cols-3">
-            {detail.abilities.map((ability) => (
-              <li
-                key={ability.name}
-                className="rounded-xl bg-surface-muted/60 px-3 py-2"
-              >
-                <p className="flex items-center gap-2 font-medium">
-                  {pickText(ability.names, language) ??
-                    formatName(ability.name)}
-                  {ability.hidden && (
-                    <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-normal text-muted">
-                      {t("detail.hidden")}
-                    </span>
-                  )}
-                </p>
-                <p className="text-sm text-muted">
-                  {abilityDescriptionForGame(ability, game, language) ??
-                    t("detail.noDescription")}
-                </p>
-              </li>
-            ))}
+            {detail.abilities.map((ability) => {
+              const description = abilityDescriptionForMode(
+                ability,
+                game,
+                language,
+                showGeneralEffect,
+              );
+
+              return (
+                <li
+                  key={ability.name}
+                  className="rounded-xl bg-surface-muted/60 px-3 py-2"
+                >
+                  <p className="flex items-center gap-2 font-medium">
+                    {pickText(ability.names, language) ??
+                      formatName(ability.name)}
+                    {ability.hidden && (
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-normal text-muted">
+                        {t("detail.hidden")}
+                      </span>
+                    )}
+                  </p>
+                  <p className="whitespace-pre-line text-sm text-muted">
+                    {description ?? t("detail.noDescription")}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Section>

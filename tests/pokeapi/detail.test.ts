@@ -117,7 +117,8 @@ describe("parsePokemonFormNames", () => {
 });
 
 describe("parseAbilityTexts", () => {
-  const effect = (language: string, text: string) => ({
+  const effect = (language: string, text: string, fullEffect = "") => ({
+    effect: fullEffect,
     short_effect: text,
     language: { name: language },
   });
@@ -143,6 +144,7 @@ describe("parseAbilityTexts", () => {
     ).toEqual({
       names: { en: "Blaze", de: "Großbrand" },
       descriptions: { en: "Boosts fire.", de: "Stärkt Feuer." },
+      effectDescriptions: {},
       gameDescriptions: {},
     });
   });
@@ -171,6 +173,23 @@ describe("parseAbilityTexts", () => {
     ).toEqual({});
   });
 
+  it("keeps full effects separate and preserves paragraph breaks", () => {
+    expect(
+      parseAbilityTexts({
+        names,
+        effect_entries: [
+          effect("en", "Short effect.", "First paragraph.\n\nSecond\nparagraph."),
+          effect("de", "Kurzer Effekt.", "Ausführliche Wirkung."),
+          effect("fr", "", " \n  "),
+        ],
+        flavor_text_entries: [],
+      }).effectDescriptions,
+    ).toEqual({
+      en: "First paragraph.\n\nSecond paragraph.",
+      de: "Ausführliche Wirkung.",
+    });
+  });
+
   it("keeps flavor text by version group and prefers Japanese kanji", () => {
     expect(
       parseAbilityTexts({
@@ -188,6 +207,7 @@ describe("parseAbilityTexts", () => {
     ).toEqual({
       names: { en: "Blaze", de: "Großbrand" },
       descriptions: { en: "No game group", ja: "漢字" },
+      effectDescriptions: {},
       gameDescriptions: {
         "x-y": { en: "Boosts fire.", ja: "漢字" },
         "sword-shield": { en: "Newer fire text." },
@@ -242,6 +262,7 @@ describe("parseDetail", () => {
         blaze: {
           names: { en: "Blaze" },
           descriptions: { en: "Powers up fire moves." },
+          effectDescriptions: {},
           gameDescriptions: {},
         },
       },
@@ -290,6 +311,7 @@ describe("parseDetail", () => {
           hidden: false,
           names: { en: "Blaze" },
           descriptions: { en: "Powers up fire moves." },
+          effectDescriptions: {},
           gameDescriptions: {},
         },
         {
@@ -298,6 +320,7 @@ describe("parseDetail", () => {
           hidden: true,
           names: {},
           descriptions: {},
+          effectDescriptions: {},
           gameDescriptions: {},
         },
       ],
@@ -916,6 +939,7 @@ describe("past stats and types", () => {
         levitate: {
           names: { en: "Levitate" },
           descriptions: {},
+          effectDescriptions: {},
           gameDescriptions: { "gold-silver": { en: "Raises Speed." } },
         },
       }),
@@ -932,6 +956,7 @@ describe("past stats and types", () => {
               hidden: false,
               names: { en: "Levitate" },
               descriptions: {},
+              effectDescriptions: {},
               gameDescriptions: { "gold-silver": { en: "Raises Speed." } },
             },
           },
