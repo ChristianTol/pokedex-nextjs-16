@@ -5,6 +5,7 @@ import type {
 } from "@/lib/pokeapi/detail";
 import { parseGameSprites } from "@/lib/pokeapi/detail";
 import {
+  abilityDescriptionForGame,
   abilitiesForGeneration,
   descriptionForGame,
   detailForGame,
@@ -69,12 +70,19 @@ describe("statsForGeneration", () => {
   });
 });
 
-const ability = (slot: number, name: string, hidden = false) => ({
+const ability = (
+  slot: number,
+  name: string,
+  hidden = false,
+  gameDescriptions: Record<string, Record<string, string>> = {},
+  descriptions: Record<string, string> = {},
+) => ({
   slot,
   name,
   hidden,
   names: {},
-  descriptions: {},
+  descriptions,
+  gameDescriptions,
 });
 
 describe("abilitiesForGeneration", () => {
@@ -374,6 +382,74 @@ describe("formSpriteCandidates", () => {
         false,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("abilityDescriptionForGame", () => {
+  const entry = ability(
+    1,
+    "blaze",
+    false,
+    {
+      "x-y": { en: "X/Y flavor", de: "X/Y auf Deutsch" },
+      "sword-shield": { en: "Sword/Shield flavor" },
+    },
+    { en: "General effect", de: "Allgemeine Wirkung" },
+  );
+
+  it("uses the selected game's ability flavor text", () => {
+    expect(abilityDescriptionForGame(entry, "x-y", "en")).toBe("X/Y flavor");
+    expect(abilityDescriptionForGame(entry, "sword-shield", "en")).toBe(
+      "Sword/Shield flavor",
+    );
+  });
+
+  it("uses the base game's text for an expansion", () => {
+    expect(
+      abilityDescriptionForGame(entry, "the-isle-of-armor", "en"),
+    ).toBe("Sword/Shield flavor");
+  });
+
+  it("prefers the chosen language and then English within the selected game", () => {
+    expect(abilityDescriptionForGame(entry, "x-y", "de")).toBe(
+      "X/Y auf Deutsch",
+    );
+    expect(abilityDescriptionForGame(entry, "sword-shield", "de")).toBe(
+      "Sword/Shield flavor",
+    );
+  });
+
+  it("falls back to the general description when the game has no text", () => {
+    expect(abilityDescriptionForGame(entry, "scarlet-violet", "de")).toBe(
+      "Allgemeine Wirkung",
+    );
+    expect(abilityDescriptionForGame(entry, null, "de")).toBe(
+      "Allgemeine Wirkung",
+    );
+  });
+
+  it("uses game descriptions for historical abilities", () => {
+    const historical = abilitiesForGeneration(
+      [ability(1, "blaze")],
+      [
+        {
+          generation: 4,
+          slots: [
+            {
+              slot: 1,
+              ability: ability(1, "levitate", false, {
+                "gold-silver": { en: "Raises Speed." },
+              }),
+            },
+          ],
+        },
+      ],
+      4,
+    );
+
+    expect(
+      abilityDescriptionForGame(historical[0], "gold-silver", "en"),
+    ).toBe("Raises Speed.");
   });
 });
 

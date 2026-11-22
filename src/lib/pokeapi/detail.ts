@@ -30,6 +30,8 @@ export type PokemonAbility = {
   hidden: boolean;
   names: LocalizedText;
   descriptions: LocalizedText;
+  /** Ability flavor text per PokéAPI version group. */
+  gameDescriptions: Record<string, LocalizedText>;
 };
 
 export type PokemonStat = {
@@ -311,6 +313,7 @@ type AbilityResponse = {
   flavor_text_entries: {
     flavor_text: string;
     language: { name: string };
+    version_group?: { name: string };
   }[];
 };
 
@@ -469,6 +472,7 @@ export function parseTypeChart(relations: TypeRelations): TypeChart {
 export function parseAbilityTexts(ability: AbilityResponse): {
   names: LocalizedText;
   descriptions: LocalizedText;
+  gameDescriptions: Record<string, LocalizedText>;
 } {
   const descriptions: LocalizedText = {};
   for (const language of TEXT_LANGUAGES) {
@@ -483,7 +487,27 @@ export function parseAbilityTexts(ability: AbilityResponse): {
       : flavor && cleanFlavorText(flavor.flavor_text, language);
     if (text) descriptions[language] = text;
   }
-  return { names: parseLocalizedNames(ability.names), descriptions };
+  const byGame: Record<string, FlavorTextEntry[]> = {};
+  for (const entry of ability.flavor_text_entries) {
+    const game = entry.version_group?.name;
+    if (!game) continue;
+    (byGame[game] ??= []).push({
+      flavor_text: entry.flavor_text,
+      language: entry.language,
+      version: { name: game },
+    });
+  }
+  const gameDescriptions = Object.fromEntries(
+    Object.entries(byGame)
+      .map(([game, entries]) => [game, parseDescriptions(entries)] as const)
+      .filter(([, text]) => Object.keys(text).length > 0),
+  );
+
+  return {
+    names: parseLocalizedNames(ability.names),
+    descriptions,
+    gameDescriptions,
+  };
 }
 
 export function parseForms(species: SpeciesResponse): PokemonForm[] {
@@ -724,7 +748,11 @@ export function withEvolutionNames(
 
 type AbilityTexts = Record<
   string,
-  { names: LocalizedText; descriptions: LocalizedText }
+  {
+    names: LocalizedText;
+    descriptions: LocalizedText;
+    gameDescriptions: Record<string, LocalizedText>;
+  }
 >;
 
 function parseAbility(
@@ -739,6 +767,7 @@ function parseAbility(
     hidden,
     names: texts[name]?.names ?? {},
     descriptions: texts[name]?.descriptions ?? {},
+    gameDescriptions: texts[name]?.gameDescriptions ?? {},
   };
 }
 

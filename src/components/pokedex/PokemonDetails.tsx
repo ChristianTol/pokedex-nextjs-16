@@ -2,6 +2,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
 import { pickText } from "@/lib/i18n/languages";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
+import { abilityDescriptionForGame } from "@/lib/pokedex/game-detail";
 import {
   formatHeight,
   formatName,
@@ -189,7 +190,7 @@ export function PokemonDetails({
                   )}
                 </p>
                 <p className="text-sm text-muted">
-                  {pickText(ability.descriptions, language) ??
+                  {abilityDescriptionForGame(ability, game, language) ??
                     t("detail.noDescription")}
                 </p>
               </li>

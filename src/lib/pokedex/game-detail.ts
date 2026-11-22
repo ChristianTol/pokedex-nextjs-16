@@ -111,6 +111,18 @@ export function descriptionForGame(
   return { text: pickText(detail.descriptions, language), fromGame: null };
 }
 
+/** The selected game's ability flavor text, or the general ability effect. */
+export function abilityDescriptionForGame(
+  ability: Pick<PokemonAbility, "descriptions" | "gameDescriptions">,
+  game: string | null,
+  language: Language,
+): string | null {
+  const gameDescription = game
+    ? pickText(ability.gameDescriptions[descriptionGame(game)], language)
+    : null;
+  return gameDescription ?? pickText(ability.descriptions, language);
+}
+
 function pickCode(text: PokemonDetail["descriptions"], code: string) {
   return (text as Record<string, string | undefined>)[code];
 }

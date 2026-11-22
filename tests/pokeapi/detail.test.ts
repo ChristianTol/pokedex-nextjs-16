@@ -143,6 +143,7 @@ describe("parseAbilityTexts", () => {
     ).toEqual({
       names: { en: "Blaze", de: "Großbrand" },
       descriptions: { en: "Boosts fire.", de: "Stärkt Feuer." },
+      gameDescriptions: {},
     });
   });
 
@@ -168,6 +169,30 @@ describe("parseAbilityTexts", () => {
         flavor_text_entries: [],
       }).descriptions,
     ).toEqual({});
+  });
+
+  it("keeps flavor text by version group and prefers Japanese kanji", () => {
+    expect(
+      parseAbilityTexts({
+        names,
+        effect_entries: [],
+        flavor_text_entries: [
+          { ...flavor("en", "Boosts fire.\n"), version_group: { name: "x-y" } },
+          { ...flavor("ja-hrkt", "かな"), version_group: { name: "x-y" } },
+          { ...flavor("ja", "漢字"), version_group: { name: "x-y" } },
+          { ...flavor("en", "Newer fire text."), version_group: { name: "sword-shield" } },
+          { ...flavor("en", "No game group") },
+          { ...flavor("fr", "   "), version_group: { name: "scarlet-violet" } },
+        ],
+      }),
+    ).toEqual({
+      names: { en: "Blaze", de: "Großbrand" },
+      descriptions: { en: "No game group", ja: "漢字" },
+      gameDescriptions: {
+        "x-y": { en: "Boosts fire.", ja: "漢字" },
+        "sword-shield": { en: "Newer fire text." },
+      },
+    });
   });
 });
 
@@ -217,6 +242,7 @@ describe("parseDetail", () => {
         blaze: {
           names: { en: "Blaze" },
           descriptions: { en: "Powers up fire moves." },
+          gameDescriptions: {},
         },
       },
       { id: 6, name: "charizard", names: {}, methods: [], evolvesTo: [] },
@@ -264,6 +290,7 @@ describe("parseDetail", () => {
           hidden: false,
           names: { en: "Blaze" },
           descriptions: { en: "Powers up fire moves." },
+          gameDescriptions: {},
         },
         {
           slot: 3,
@@ -271,6 +298,7 @@ describe("parseDetail", () => {
           hidden: true,
           names: {},
           descriptions: {},
+          gameDescriptions: {},
         },
       ],
       stats: [
@@ -885,7 +913,11 @@ describe("past stats and types", () => {
   it("reads past abilities, with texts and empty slots", () => {
     expect(
       parsePastAbilities(pokemon, {
-        levitate: { names: { en: "Levitate" }, descriptions: {} },
+        levitate: {
+          names: { en: "Levitate" },
+          descriptions: {},
+          gameDescriptions: { "gold-silver": { en: "Raises Speed." } },
+        },
       }),
     ).toEqual([
       {
@@ -900,6 +932,7 @@ describe("past stats and types", () => {
               hidden: false,
               names: { en: "Levitate" },
               descriptions: {},
+              gameDescriptions: { "gold-silver": { en: "Raises Speed." } },
             },
           },
         ],
