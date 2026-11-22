@@ -153,7 +153,7 @@ function EvolutionButton({
       type="button"
       onClick={() => onSelect(node.id, node.formId)}
       aria-current={current ? "true" : undefined}
-      className={`group flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors focus-visible:outline-none ${
+      className={`flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors focus-visible:outline-none focus-visible:border-dotted ${
         current
           ? "border-selected bg-surface-muted"
           : "border-border hover:border-muted hover:bg-surface-muted"
@@ -168,7 +168,7 @@ function EvolutionButton({
         showSprite={showSprite}
       />
       <span className="text-xs text-muted">{formatNumber(node.id)}</span>
-      <span className="text-sm font-medium group-focus-visible:underline group-focus-visible:decoration-2 group-focus-visible:underline-offset-2">
+      <span className="text-sm font-medium">
         {name}
       </span>
     </button>

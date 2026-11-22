@@ -130,7 +130,7 @@ export function FormPicker({
                   >
                 <span
                     aria-hidden="true"
-                    className={`flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors ${
+                    className={`flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors group-focus-visible:border-dotted ${
                         active
                             ? "border-selected bg-surface-muted"
                             : "border-border hover:border-muted hover:bg-surface-muted"
@@ -145,7 +145,7 @@ export function FormPicker({
                       fallbackToLatestGameSprite={!active}
                   />
                 </span>
-                    <span className="w-full break-words leading-tight group-focus-visible:underline group-focus-visible:decoration-2 group-focus-visible:underline-offset-2">
+                    <span className="w-full break-words leading-tight">
                   {formDataLoading && !form.isDefault ? (
                       <span
                           aria-hidden="true"

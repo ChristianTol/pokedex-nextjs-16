@@ -212,11 +212,11 @@ describe("FormPicker", () => {
 
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain(
-        'class="flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors border-selected bg-surface-muted"',
+        'class="flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors group-focus-visible:border-dotted border-selected bg-surface-muted"',
     );
   });
 
-  it("keeps keyboard focus visible on the form name without outlining the whole option", () => {
+  it("keeps keyboard focus visible on the existing sprite border without underlining the name", () => {
     const markup = renderPicker();
     const formButton = [...markup.matchAll(/<button\b[\s\S]*?<\/button>/g)].find(
         ([button]) => button.includes('aria-label="Standaard"'),
@@ -224,9 +224,8 @@ describe("FormPicker", () => {
 
     expect(formButton).toContain("focus-visible:outline-none");
     expect(formButton).not.toContain("focus-visible:outline-2");
-    expect(formButton).toContain(
-        "group-focus-visible:underline group-focus-visible:decoration-2 group-focus-visible:underline-offset-2",
-    );
+    expect(formButton).toContain("group-focus-visible:border-dotted");
+    expect(formButton).not.toContain("group-focus-visible:underline");
   });
 
   it("places the shiny control at the right of the title at every screen size", () => {
