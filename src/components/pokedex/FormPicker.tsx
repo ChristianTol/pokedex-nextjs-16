@@ -76,7 +76,7 @@ export function FormPicker({
                              shiny,
                              onToggleShiny,
                            }: Props) {
-  const { language, t } = useLanguage();
+  const { language, t, tOptional } = useLanguage();
   return (
       <section
           aria-label={t("detail.forms")}
@@ -113,9 +113,17 @@ export function FormPicker({
           {forms.map((form) => {
             const active = form.id === currentFormId;
             const formSprites = sprites.find((sprite) => sprite.id === form.id);
-            const label = form.isDefault
-                ? t("detail.formDefault")
-                : formatFormLabel(speciesName, form.name, language, formSprites?.names);
+            const formSuffix = form.name.startsWith(`${speciesName}-`)
+                ? form.name.slice(speciesName.length + 1)
+                : null;
+            const formType = formSuffix && !formSuffix.includes("-")
+                ? tOptional(`type.${formSuffix}`)
+                : null;
+            const label =
+                formType ??
+                (form.isDefault
+                    ? t("detail.formDefault")
+                    : formatFormLabel(speciesName, form.name, language, formSprites?.names));
             return (
                 <li
                     key={form.id}

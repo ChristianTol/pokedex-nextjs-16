@@ -14,7 +14,14 @@ vi.mock("@/hooks/useLanguage", () => ({
           "detail.forms": "Vormen",
           "detail.formDefault": "Standaard",
           "detail.shiny": "Shiny",
+          "type.normal": "Normaal",
+          "type.fire": "Vuur",
         })[key] ?? key,
+    tOptional: (key: string) =>
+        ({
+          "type.normal": "Normaal",
+          "type.fire": "Vuur",
+        })[key],
   }),
 }));
 
@@ -115,6 +122,36 @@ describe("FormPicker", () => {
     });
 
     expect(markup).toContain(">Alolaans</span>");
+  });
+
+  it("uses translated type names for Arceus form labels, including Normal", () => {
+    const markup = renderPicker({
+      speciesName: "arceus",
+      forms: [
+        { id: 493, name: "arceus-normal", isDefault: true },
+        { id: 10046, name: "arceus-fire", isDefault: false },
+      ],
+      sprites: [],
+    });
+
+    expect(markup).toContain('aria-label="Normaal"');
+    expect(markup).toContain('aria-label="Vuur"');
+    expect(markup).not.toContain('aria-label="Standaard"');
+  });
+
+  it("uses translated type names for Silvally's type forms", () => {
+    const markup = renderPicker({
+      speciesName: "silvally",
+      forms: [
+        { id: 773, name: "silvally-normal", isDefault: true },
+        { id: 10240, name: "silvally-fire", isDefault: false },
+      ],
+      sprites: [],
+    });
+
+    expect(markup).toContain('aria-label="Normaal"');
+    expect(markup).toContain('aria-label="Vuur"');
+    expect(markup).not.toContain('aria-label="Standaard"');
   });
 
   it("shows name skeletons while keeping the forms picker available", () => {

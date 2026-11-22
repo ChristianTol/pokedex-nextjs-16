@@ -105,7 +105,7 @@ export type EvolutionNode = {
 };
 
 export type PokemonForm = {
-  /** PokéAPI pokemon id of the form (above 10000 for alternative forms). */
+  /** PokéAPI pokemon or pokemon-form id, depending on how the form is stored. */
   id: number;
   /** PokéAPI pokemon slug, e.g. "charizard-mega-x". */
   name: string;
@@ -207,7 +207,7 @@ type PokemonResponse = {
   stats: { base_stat: number; stat: { name: string } }[];
   /** Only used for the list of games; the moves themselves load separately. */
   moves?: PokemonMovesResponse["moves"];
-  forms?: { url: string }[];
+  forms?: { name: string; url: string }[];
   past_stats?: {
     generation: { url: string };
     stats: { base_stat: number; stat: { name: string } }[];
@@ -246,6 +246,22 @@ type PokemonResponse = {
 type NameEntry = { name: string; language: { name: string } };
 
 type PokemonFormResponse = { form_names: NameEntry[] };
+
+type PokemonFormResourceResponse = PokemonFormResponse & {
+  id: number;
+  name: string;
+  is_default: boolean;
+  pokemon: { name: string; url: string };
+  types: PokemonResponse["types"];
+  sprites: PokemonResponse["sprites"];
+};
+
+type PokemonFormSelection = {
+  form: PokemonForm;
+  pokemonId: number;
+  pokemon?: PokemonResponse;
+  formResourceId?: number;
+};
 
 type FlavorTextEntry = {
   flavor_text: string;
@@ -535,6 +551,116 @@ export function parseForms(species: SpeciesResponse): PokemonForm[] {
   }));
 }
 
+/**
+ * Resolves species varieties and any additional forms exposed by their
+ * Pokémon resources. Form resource IDs are kept separate from Pokémon IDs.
+ */
+async function resolvePokemonForms(
+  species: SpeciesResponse,
+): Promise<PokemonFormSelection[]> {
+  const varieties = await mapWithConcurrency(
+    species.varieties,
+    6,
+    async (variety) => {
+      const pokemonId = idFromUrl(variety.pokemon.url);
+      try {
+        return {
+          variety,
+          pokemonId,
+          pokemon: await fetchPokeApi<PokemonResponse>(`/pokemon/${pokemonId}`),
+        };
+      } catch {
+        return { variety, pokemonId };
+      }
+    },
+  );
+
+  const groups = await mapWithConcurrency(varieties, 6, async (entry) => {
+    const formRefs = entry.pokemon?.forms ?? [];
+    if (!entry.pokemon || formRefs.length <= 1) {
+      return [
+        {
+          form: {
+            id: entry.pokemonId,
+            name: entry.variety.pokemon.name,
+            isDefault: entry.variety.is_default,
+          },
+          pokemonId: entry.pokemonId,
+          pokemon: entry.pokemon,
+        },
+      ];
+    }
+
+    const playableForms = formRefs.filter(
+      (form) => !(species.id === 493 && form.name === "arceus-unknown"),
+    );
+    let defaultFormId: number | undefined;
+    if (entry.variety.is_default) {
+      for (const form of playableForms) {
+        try {
+          const resource = await fetchPokeApi<PokemonFormResourceResponse>(
+            `/pokemon-form/${idFromUrl(form.url)}`,
+          );
+          if (resource.is_default) {
+            defaultFormId = idFromUrl(form.url);
+            break;
+          }
+        } catch {
+          // A missing form resource should not hide the other form choices.
+        }
+      }
+      defaultFormId ??=
+        playableForms.find((form) => idFromUrl(form.url) === entry.pokemonId)
+          ? entry.pokemonId
+          : playableForms[0]
+            ? idFromUrl(playableForms[0].url)
+            : undefined;
+    }
+
+    return playableForms.map((form) => {
+      const formId = idFromUrl(form.url);
+      return {
+        form: {
+          id: formId,
+          name: form.name,
+          isDefault: entry.variety.is_default && formId === defaultFormId,
+        },
+        pokemonId: entry.pokemonId,
+        pokemon: entry.pokemon,
+        formResourceId: formId,
+      };
+    });
+  });
+
+  const unique = new Map<number, PokemonFormSelection>();
+  for (const selection of groups.flat()) {
+    if (!unique.has(selection.form.id)) unique.set(selection.form.id, selection);
+  }
+  const selections = [...unique.values()];
+  if (!selections.some((selection) => selection.form.isDefault)) {
+    const defaultVariety =
+      species.varieties.find((variety) => variety.is_default) ??
+      species.varieties[0];
+    const defaultVarietyId = defaultVariety
+      ? idFromUrl(defaultVariety.pokemon.url)
+      : undefined;
+    const fallback = defaultVarietyId
+      ? selections.find((selection) => selection.form.id === defaultVarietyId) ??
+        selections.find((selection) => selection.pokemonId === defaultVarietyId)
+      : selections[0];
+    if (fallback) {
+      fallback.form = { ...fallback.form, isDefault: true };
+    }
+  }
+  return selections;
+}
+
+function arceusPastTypes(types: string[]): PastTypes[] {
+  const past: PastTypes[] = [{ generation: 3, types: ["normal"] }];
+  if (types.includes("fairy")) past.push({ generation: 5, types: ["normal"] });
+  return past;
+}
+
 export function parseArtwork(pokemon: PokemonResponse): string | null {
   return (
     pokemon.sprites.other?.["official-artwork"]?.front_default ??
@@ -579,7 +705,7 @@ function correctKyuremScarletVioletSprite(
  * over generations). The menu "icons" are not game sprites.
  */
 export function parseGameSprites(
-  pokemon: PokemonResponse,
+  pokemon: Pick<PokemonResponse, "id" | "sprites">,
 ): Record<string, GameSprite> {
   const result: Record<string, GameSprite> = {};
   for (const generation of Object.values(pokemon.sprites.versions ?? {})) {
@@ -606,11 +732,11 @@ export function parseGameSprites(
 
 export function parseFormSprites(
   id: number,
-  pokemon: PokemonResponse,
+  pokemon: Pick<PokemonResponse, "sprites">,
 ): PokemonFormSprites {
   return {
     id,
-    gameSprites: parseGameSprites(pokemon),
+    gameSprites: parseGameSprites({ id, sprites: pokemon.sprites }),
     defaultSprite: pokemon.sprites.front_default,
     shinyDefaultSprite: pokemon.sprites.front_shiny ?? null,
     artwork: pokemon.sprites.other?.["official-artwork"]?.front_default ?? null,
@@ -846,8 +972,19 @@ export function parseDetail(
   evolution: EvolutionNode,
   typeRelations: TypeRelations[],
   olderTypeRelations: TypeRelations[] = [],
+  forms: PokemonForm[] = parseForms(species),
+  selectedForm?: PokemonFormResourceResponse,
 ): PokemonDetail {
   const learnsets = parseLearnsets({ moves: pokemon.moves ?? [] });
+  const formPokemon = selectedForm
+    ? {
+        ...pokemon,
+        name: selectedForm.name,
+        types: selectedForm.types,
+        sprites: selectedForm.sprites,
+      }
+    : pokemon;
+  const currentTypes = typeNames(formPokemon.types);
   return {
     id: species.id,
     speciesName: species.name,
@@ -855,17 +992,15 @@ export function parseDetail(
     descriptions: parseDescriptions(species.flavor_text_entries),
     gameDescriptions: parseGameDescriptions(species.flavor_text_entries),
     pokemonId: pokemon.id,
-    name: pokemon.name,
-    forms: parseForms(species),
-    artwork: parseArtwork(pokemon),
-    shinyArtwork: parseShinyArtwork(pokemon),
-    types: [...pokemon.types]
-      .sort((a, b) => a.slot - b.slot)
-      .map((entry) => entry.type.name),
+    name: formPokemon.name,
+    forms,
+    artwork: parseArtwork(formPokemon),
+    shinyArtwork: parseShinyArtwork(formPokemon),
+    types: currentTypes,
     heightMeters: pokemon.height / 10,
     weightKg: pokemon.weight / 10,
     genus: parseGenera(species.genera),
-    gameSprites: parseGameSprites(pokemon),
+    gameSprites: parseGameSprites(formPokemon),
     cry: pokemon.cries?.latest ?? pokemon.cries?.legacy ?? null,
     gender: parseGender(species.gender_rate),
     abilities: [...pokemon.abilities]
@@ -886,37 +1021,70 @@ export function parseDetail(
     defaultGame: defaultGame(learnsets),
     pastStats: parsePastStats(pokemon),
     pastAbilities: parsePastAbilities(pokemon, abilityTexts),
-    pastTypes: parsePastTypes(pokemon),
+    pastTypes:
+      selectedForm && species.id === 493
+        ? arceusPastTypes(currentTypes)
+        : parsePastTypes(pokemon),
     typeCharts: [...typeRelations, ...olderTypeRelations].map(parseTypeChart),
     matchups: computeMatchups(typeRelations),
     evolution,
   };
 }
 
-/**
- * Fetches the species and picks the pokemon to show: `formId` (a pokemon id
- * from the species' varieties) or else the default form. Throws a 404
- * `PokeApiError` for a form that belongs to another species.
- */
+/** Fetches the species and validates the selected variety or form resource ID. */
 export async function resolveForm(id: number, formId?: number) {
   const species = await fetchPokeApi<SpeciesResponse>(`/pokemon-species/${id}`);
-  const forms = parseForms(species);
-  const targetId = formId ?? forms.find((form) => form.isDefault)?.id ?? id;
-  if (!forms.some((form) => form.id === targetId)) {
-    throw new PokeApiError(`Pokémon ${id} has no form ${targetId}`, 404);
+  const selections = await resolvePokemonForms(species);
+  const selectedId =
+    formId ??
+    selections.find((selection) => selection.form.isDefault)?.form.id ??
+    id;
+  const selected = selections.find(
+    (selection) => selection.form.id === selectedId,
+  );
+  if (!selected) {
+    throw new PokeApiError(`Pokémon ${id} has no form ${selectedId}`, 404);
   }
-  return { species, targetId };
+  return {
+    species,
+    targetId: selected.pokemonId,
+    forms: selections.map((selection) => selection.form),
+    selected,
+  };
 }
 
-/** Loads each variety's sprites and localized form name independently. */
+/** Loads each form's sprites and localized name independently. */
 export async function getPokemonFormSprites(
   id: number,
 ): Promise<PokemonFormSprites[]> {
-  const { species } = await resolveForm(id);
-  const forms = parseForms(species);
-  return mapWithConcurrency(forms, 6, async (form) => {
+  const species = await fetchPokeApi<SpeciesResponse>(`/pokemon-species/${id}`);
+  const selections = await resolvePokemonForms(species);
+  return mapWithConcurrency(selections, 6, async (selection) => {
+    const { form } = selection;
+    if (selection.formResourceId !== undefined) {
+      try {
+        const resource = await fetchPokeApi<PokemonFormResourceResponse>(
+          `/pokemon-form/${selection.formResourceId}`,
+        );
+        return {
+          ...parseFormSprites(form.id, resource),
+          names: parsePokemonFormNames(resource),
+        };
+      } catch {
+        return {
+          id: form.id,
+          names: {},
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        };
+      }
+    }
     try {
-      const pokemon = await fetchPokeApi<PokemonResponse>(`/pokemon/${form.id}`);
+      if (!selection.pokemon) throw new Error("Pokémon resource unavailable");
+      const pokemon = selection.pokemon;
       const sprites = parseFormSprites(form.id, pokemon);
       const formResource = pokemon.forms?.[0];
       if (!formResource) return { ...sprites, names: {} };
@@ -968,14 +1136,25 @@ export async function getPokemonDetail(
   id: number,
   formId?: number,
 ): Promise<PokemonDetail> {
-  const { species, targetId } = await resolveForm(id, formId);
+  const { species, targetId, forms, selected } = await resolveForm(id, formId);
 
-  const [pokemon, chain] = await Promise.all([
-    fetchPokeApi<PokemonResponse>(`/pokemon/${targetId}`),
+  const [chain, selectedForm] = await Promise.all([
     fetchPokeApi<EvolutionChainResponse>(
       `/evolution-chain/${idFromUrl(species.evolution_chain.url)}`,
     ),
+    selected.formResourceId === undefined
+      ? Promise.resolve(undefined)
+      : fetchPokeApi<PokemonFormResourceResponse>(
+          `/pokemon-form/${selected.formResourceId}`,
+        ).catch(() => undefined),
   ]);
+  const pokemonId = selectedForm
+    ? idFromUrl(selectedForm.pokemon.url)
+    : targetId;
+  const pokemon =
+    selected.pokemon?.id === pokemonId
+      ? selected.pokemon
+      : await fetchPokeApi<PokemonResponse>(`/pokemon/${pokemonId}`);
 
   const abilityNames = [
     ...new Set([
@@ -987,10 +1166,16 @@ export async function getPokemonDetail(
 
   // The chain only has slugs; the stages' names come from their species.
   const otherIds = evolutionIds(evolution).filter((stage) => stage !== id);
-  const currentTypes = pokemon.types.map((entry) => entry.type.name);
-  const olderTypes = [...new Set(pastTypeNames(pokemon))].filter(
-    (name) => !currentTypes.includes(name),
-  );
+  const currentTypes = selectedForm
+    ? typeNames(selectedForm.types)
+    : pokemon.types.map((entry) => entry.type.name);
+  const pastTypes =
+    selectedForm && species.id === 493
+      ? arceusPastTypes(currentTypes)
+      : parsePastTypes(pokemon);
+  const olderTypes = [
+    ...new Set(pastTypes.flatMap((entry) => entry.types)),
+  ].filter((name) => !currentTypes.includes(name));
   const [abilities, otherSpecies, typeRelations, olderTypeRelations, refNames] =
     await Promise.all([
       Promise.all(
@@ -1006,9 +1191,7 @@ export async function getPokemonDetail(
         ),
       ),
       Promise.all(
-        pokemon.types.map((entry) =>
-          fetchPokeApi<TypeRelations>(`/type/${entry.type.name}`),
-        ),
+        currentTypes.map((name) => fetchPokeApi<TypeRelations>(`/type/${name}`)),
       ),
       Promise.all(
         olderTypes.map((name) => fetchPokeApi<TypeRelations>(`/type/${name}`)),
@@ -1045,5 +1228,7 @@ export async function getPokemonDetail(
     ),
     typeRelations,
     olderTypeRelations,
+    forms,
+    selectedForm,
   );
 }
