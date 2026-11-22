@@ -21,6 +21,8 @@ vi.mock("@/hooks/useLanguage", () => ({
         ({
           "type.normal": "Normaal",
           "type.fire": "Vuur",
+          "type.ice": "IJs",
+          "type.shadow": "Schaduw",
         })[key],
   }),
 }));
@@ -152,6 +154,143 @@ describe("FormPicker", () => {
     expect(markup).toContain('aria-label="Normaal"');
     expect(markup).toContain('aria-label="Vuur"');
     expect(markup).not.toContain('aria-label="Standaard"');
+  });
+
+  it("keeps Calyrex Rider names instead of treating them as type forms", () => {
+    const markup = renderPicker({
+      speciesName: "calyrex",
+      forms: [
+        { id: 898, name: "calyrex", isDefault: true },
+        { id: 10193, name: "calyrex-ice", isDefault: false },
+        { id: 10194, name: "calyrex-shadow", isDefault: false },
+      ],
+      sprites: [],
+    });
+
+    expect(markup).toContain('aria-label="IJs Ruiter"');
+    expect(markup).toContain('aria-label="Schaduw Ruiter"');
+    expect(markup).not.toContain('aria-label="IJs"');
+    expect(markup).not.toContain('aria-label="Schaduw"');
+  });
+
+  it("uses Calyrex's official localized Rider names when available", () => {
+    languageState.language = "en";
+    const markup = renderPicker({
+      speciesName: "calyrex",
+      forms: [{ id: 10193, name: "calyrex-ice", isDefault: false }],
+      sprites: [
+        {
+          id: 10193,
+          names: { en: "Ice Rider" },
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        },
+      ],
+    });
+    languageState.language = "nl";
+
+    expect(markup).toContain('aria-label="Ice Rider"');
+    expect(markup).not.toContain('aria-label="IJs"');
+  });
+
+  it("prefixes each official Unown form name with Unown", () => {
+    const markup = renderPicker({
+      speciesName: "unown",
+      forms: [
+        { id: 201, name: "unown-a", isDefault: true },
+        { id: 10001, name: "unown-b", isDefault: false },
+        { id: 10026, name: "unown-exclamation", isDefault: false },
+        { id: 10027, name: "unown-question", isDefault: false },
+      ],
+      sprites: [
+        {
+          id: 201,
+          names: { en: "A" },
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        },
+        {
+          id: 10001,
+          names: { en: "B" },
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        },
+        {
+          id: 10026,
+          names: { en: "!" },
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        },
+        {
+          id: 10027,
+          names: { en: "?" },
+          gameSprites: {},
+          defaultSprite: null,
+          shinyDefaultSprite: null,
+          artwork: null,
+          shinyArtwork: null,
+        },
+      ],
+    });
+
+    expect(markup).toContain('aria-label="Unown A"');
+    expect(markup).toContain('aria-label="Unown B"');
+    expect(markup).toContain('aria-label="Unown !"');
+    expect(markup).toContain('aria-label="Unown ?"');
+    expect(markup).not.toContain('aria-label="Standaard"');
+  });
+
+  it("uses each Unown form's HOME artwork in artwork mode", () => {
+    const markup = renderPicker({
+      speciesName: "unown",
+      forms: [
+        { id: 201, name: "unown-a", isDefault: true },
+        { id: 10001, name: "unown-b", isDefault: false },
+      ],
+      sprites: [
+        {
+          id: 201,
+          names: { en: "A" },
+          gameSprites: {},
+          defaultSprite: "/sprites/unown-a.png",
+          shinyDefaultSprite: "/sprites/shiny/unown-a.png",
+          artwork: "/home/unown-a.png",
+          shinyArtwork: "/home/shiny/unown-a.png",
+        },
+        {
+          id: 10001,
+          names: { en: "B" },
+          gameSprites: {},
+          defaultSprite: "/sprites/unown-b.png",
+          shinyDefaultSprite: "/sprites/shiny/unown-b.png",
+          artwork: "/home/unown-b.png",
+          shinyArtwork: "/home/shiny/unown-b.png",
+        },
+      ],
+      showSprite: false,
+    });
+
+    expect(markup).toContain('src="/home/unown-a.png"');
+    expect(markup).toContain('src="/home/unown-b.png"');
+    expect(markup).not.toContain("/artwork/unown-");
+  });
+
+  it("keeps the default label for non-Unown Pokémon", () => {
+    const markup = renderPicker({ forms: [forms[0]] });
+
+    expect(markup).toContain('aria-label="Standaard"');
   });
 
   it("shows name skeletons while keeping the forms picker available", () => {

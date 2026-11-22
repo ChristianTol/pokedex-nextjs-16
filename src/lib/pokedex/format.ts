@@ -34,15 +34,31 @@ export function formatFormLabel(
   const suffix = formName.startsWith(prefix)
     ? formName.slice(prefix.length)
     : formName;
-  const localized = language === "nl" ? null : names?.[language] || names?.en;
+  const localized = language === "nl" && speciesName !== "unown"
+    ? null
+    : names?.[language === "nl" ? "en" : language] || names?.en;
+  const dutchSuffix =
+    speciesName === "calyrex" && (suffix === "ice" || suffix === "shadow")
+      ? `${suffix}-rider`
+      : suffix;
+  const unownFallback =
+    speciesName === "unown"
+      ? suffix === "exclamation"
+        ? "!"
+        : suffix === "question"
+          ? "?"
+          : /^[a-z]$/i.test(suffix)
+            ? suffix.toUpperCase()
+            : null
+      : null;
   const label = localized?.trim()
     ? localized.trim()
-    : language === "nl"
-      ? translateDutchFormSuffix(suffix)
+    : unownFallback ?? (language === "nl"
+      ? translateDutchFormSuffix(dutchSuffix)
       : suffix
           .split("-")
           .map((word) => FORM_WORDS[word] ?? formatName(word))
-          .join(" ");
+          .join(" "));
   const megaVariant = suffix.match(/(?:^|-)mega-([xy])$/i)?.[1];
   if (megaVariant && !new RegExp(`${megaVariant}$`, "i").test(label)) {
     return `${label} ${megaVariant.toUpperCase()}`;

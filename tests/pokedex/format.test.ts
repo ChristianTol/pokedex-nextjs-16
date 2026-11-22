@@ -57,6 +57,22 @@ describe("formatFormLabel", () => {
     );
   });
 
+  it("keeps Calyrex's Rider designation in the Dutch fallback", () => {
+    expect(formatFormLabel("calyrex", "calyrex-ice", "nl")).toBe(
+      "IJs Ruiter",
+    );
+    expect(formatFormLabel("calyrex", "calyrex-shadow", "nl")).toBe(
+      "Schaduw Ruiter",
+    );
+  });
+
+  it("uses official Unown form names in Dutch and falls back to letters and symbols", () => {
+    expect(formatFormLabel("unown", "unown-a", "nl", { en: "A" })).toBe("A");
+    expect(formatFormLabel("unown", "unown-b", "nl")).toBe("B");
+    expect(formatFormLabel("unown", "unown-exclamation", "nl")).toBe("!");
+    expect(formatFormLabel("unown", "unown-question", "nl")).toBe("?");
+  });
+
   it("falls back to English or the slug and keeps Mega X/Y distinguishable", () => {
     expect(
       formatFormLabel("charizard", "charizard-mega-y", "it", {

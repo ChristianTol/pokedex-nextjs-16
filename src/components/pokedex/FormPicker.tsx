@@ -5,7 +5,7 @@ import type {
   PokemonForm,
   PokemonFormSprites,
 } from "@/lib/pokeapi/detail";
-import { formatFormLabel } from "@/lib/pokedex/format";
+import { formatFormLabel, formatName } from "@/lib/pokedex/format";
 import { formSpriteCandidates } from "@/lib/pokedex/game-detail";
 import { SparkleIcon } from "./SparkleIcon";
 
@@ -116,14 +116,25 @@ export function FormPicker({
             const formSuffix = form.name.startsWith(`${speciesName}-`)
                 ? form.name.slice(speciesName.length + 1)
                 : null;
-            const formType = formSuffix && !formSuffix.includes("-")
+            const formType =
+                (speciesName === "arceus" || speciesName === "silvally") &&
+                formSuffix &&
+                !formSuffix.includes("-")
                 ? tOptional(`type.${formSuffix}`)
                 : null;
+            const formattedLabel = formatFormLabel(
+                speciesName,
+                form.name,
+                language,
+                formSprites?.names,
+            );
             const label =
                 formType ??
-                (form.isDefault
-                    ? t("detail.formDefault")
-                    : formatFormLabel(speciesName, form.name, language, formSprites?.names));
+                (speciesName === "unown"
+                    ? `${formatName(speciesName)} ${formattedLabel}`
+                    : form.isDefault
+                        ? t("detail.formDefault")
+                        : formattedLabel);
             return (
                 <li
                     key={form.id}

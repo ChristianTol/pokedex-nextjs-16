@@ -26,6 +26,10 @@ type FormFixture = {
   isDefault: boolean;
   pokemonId: number;
   type: string;
+  homeSprites?: {
+    front_default?: string | null;
+    front_shiny?: string | null;
+  };
 };
 
 type VarietyFixture = {
@@ -44,6 +48,11 @@ type SpeciesFixture = {
 const formRef = ({ id, name }: FormFixture) => ({
   name,
   url: `https://pokeapi.co/api/v2/pokemon-form/${id}/`,
+});
+
+const homeSpritesFor = (name: string) => ({
+  front_default: `/home/${name}.png`,
+  front_shiny: `/home/shiny/${name}.png`,
 });
 
 const formResource = (form: FormFixture) => ({
@@ -70,6 +79,7 @@ const formResource = (form: FormFixture) => ({
       },
     },
     other: {
+      ...(form.homeSprites ? { home: form.homeSprites } : {}),
       "official-artwork": {
         front_default: `/artwork/${form.name}.png`,
         front_shiny: `/artwork/shiny/${form.name}.png`,
@@ -176,7 +186,14 @@ function installFixtures(fixtures: SpeciesFixture[]) {
 }
 
 const unownForms: FormFixture[] = [
-  { id: 201, name: "unown-a", isDefault: true, pokemonId: 201, type: "psychic" },
+  {
+    id: 201,
+    name: "unown-a",
+    isDefault: true,
+    pokemonId: 201,
+    type: "psychic",
+    homeSprites: homeSpritesFor("unown-a"),
+  },
   ...Array.from({ length: 25 }, (_, index) => {
     const letter = String.fromCharCode("b".charCodeAt(0) + index);
     return {
@@ -185,10 +202,25 @@ const unownForms: FormFixture[] = [
       isDefault: false,
       pokemonId: 201,
       type: "psychic",
+      homeSprites: homeSpritesFor(`unown-${letter}`),
     };
   }),
-  { id: 10026, name: "unown-exclamation", isDefault: false, pokemonId: 201, type: "psychic" },
-  { id: 10027, name: "unown-question", isDefault: false, pokemonId: 201, type: "psychic" },
+  {
+    id: 10026,
+    name: "unown-exclamation",
+    isDefault: false,
+    pokemonId: 201,
+    type: "psychic",
+    homeSprites: homeSpritesFor("unown-exclamation"),
+  },
+  {
+    id: 10027,
+    name: "unown-question",
+    isDefault: false,
+    pokemonId: 201,
+    type: "psychic",
+    homeSprites: homeSpritesFor("unown-question"),
+  },
 ];
 
 describe("Pokémon form resources shared by multiple species varieties", () => {
@@ -209,7 +241,10 @@ describe("Pokémon form resources shared by multiple species varieties", () => {
 
     const resolved = await resolveForm(201);
     const sprites = await getPokemonFormSprites(201);
+    const unownA = sprites.find((sprite) => sprite.id === 201);
+    const unownB = sprites.find((sprite) => sprite.id === 10001);
     const question = sprites.find((sprite) => sprite.id === 10027);
+    const detail = await getPokemonDetail(201);
 
     expect(resolved.forms).toHaveLength(28);
     expect(resolved.forms.find((form) => form.isDefault)).toEqual({
@@ -220,6 +255,98 @@ describe("Pokémon form resources shared by multiple species varieties", () => {
     expect(question).toMatchObject({
       defaultSprite: "/sprites/unown-question.png",
       names: { en: "unown-question" },
+    });
+    expect(unownA).toMatchObject({
+      artwork: "/home/unown-a.png",
+      shinyArtwork: "/home/shiny/unown-a.png",
+      defaultSprite: "/sprites/unown-a.png",
+      shinyDefaultSprite: "/sprites/shiny/unown-a.png",
+      gameSprites: {
+        "scarlet-violet": {
+          front: "/sprites/sv/unown-a.png",
+          shiny: "/sprites/sv/shiny/unown-a.png",
+        },
+      },
+    });
+    expect(unownB).toMatchObject({
+      artwork: "/home/unown-b.png",
+      shinyArtwork: "/home/shiny/unown-b.png",
+    });
+    expect(sprites).toHaveLength(28);
+    for (const form of unownForms) {
+      expect(sprites.find((sprite) => sprite.id === form.id)).toMatchObject({
+        artwork: form.homeSprites?.front_default,
+        shinyArtwork: form.homeSprites?.front_shiny,
+      });
+    }
+    expect(detail).toMatchObject({
+      artwork: "/home/unown-a.png",
+      shinyArtwork: "/home/shiny/unown-a.png",
+    });
+  });
+
+  it("falls back to each Unown form's own static sprite when HOME artwork is absent", async () => {
+    const formsWithoutHome = unownForms.map((form) => ({
+      ...form,
+      homeSprites: undefined,
+    }));
+    installFixtures([
+      {
+        id: 201,
+        name: "unown",
+        varieties: [
+          { id: 201, name: "unown", isDefault: true, forms: formsWithoutHome },
+        ],
+      },
+    ]);
+
+    const sprites = await getPokemonFormSprites(201);
+    const unownA = sprites.find((sprite) => sprite.id === 201);
+    const detail = await getPokemonDetail(201);
+
+    expect(unownA).toMatchObject({
+      artwork: "/sprites/unown-a.png",
+      shinyArtwork: "/sprites/shiny/unown-a.png",
+    });
+    expect(detail).toMatchObject({
+      artwork: "/sprites/unown-a.png",
+      shinyArtwork: "/sprites/shiny/unown-a.png",
+    });
+    expect(sprites.find((sprite) => sprite.id === 10001)).toMatchObject({
+      artwork: "/sprites/unown-b.png",
+      shinyArtwork: "/sprites/shiny/unown-b.png",
+    });
+  });
+
+  it("falls back independently when a HOME default or shiny image is missing", async () => {
+    const formsWithPartialHome = unownForms.map((form) => ({
+      ...form,
+      homeSprites:
+        form.id === 201
+          ? { front_shiny: "/home/shiny/unown-a.png" }
+          : form.id === 10001
+            ? { front_default: "/home/unown-b.png" }
+            : form.homeSprites,
+    }));
+    installFixtures([
+      {
+        id: 201,
+        name: "unown",
+        varieties: [
+          { id: 201, name: "unown", isDefault: true, forms: formsWithPartialHome },
+        ],
+      },
+    ]);
+
+    const sprites = await getPokemonFormSprites(201);
+
+    expect(sprites.find((sprite) => sprite.id === 201)).toMatchObject({
+      artwork: "/sprites/unown-a.png",
+      shinyArtwork: "/home/shiny/unown-a.png",
+    });
+    expect(sprites.find((sprite) => sprite.id === 10001)).toMatchObject({
+      artwork: "/home/unown-b.png",
+      shinyArtwork: "/sprites/shiny/unown-b.png",
     });
   });
 

@@ -235,6 +235,10 @@ type PokemonResponse = {
       >
     >;
     other?: {
+      home?: {
+        front_default?: string | null;
+        front_shiny?: string | null;
+      };
       "official-artwork"?: {
         front_default: string | null;
         front_shiny?: string | null;
@@ -661,7 +665,16 @@ function arceusPastTypes(types: string[]): PastTypes[] {
   return past;
 }
 
-export function parseArtwork(pokemon: PokemonResponse): string | null {
+export function parseArtwork(
+  pokemon: Pick<PokemonResponse, "name" | "sprites">,
+): string | null {
+  if (pokemon.name.startsWith("unown-")) {
+    return (
+      pokemon.sprites.other?.home?.front_default ??
+      pokemon.sprites.front_default ??
+      null
+    );
+  }
   return (
     pokemon.sprites.other?.["official-artwork"]?.front_default ??
     pokemon.sprites.front_default ??
@@ -669,7 +682,16 @@ export function parseArtwork(pokemon: PokemonResponse): string | null {
   );
 }
 
-export function parseShinyArtwork(pokemon: PokemonResponse): string | null {
+export function parseShinyArtwork(
+  pokemon: Pick<PokemonResponse, "name" | "sprites">,
+): string | null {
+  if (pokemon.name.startsWith("unown-")) {
+    return (
+      pokemon.sprites.other?.home?.front_shiny ??
+      pokemon.sprites.front_shiny ??
+      null
+    );
+  }
   return (
     pokemon.sprites.other?.["official-artwork"]?.front_shiny ??
     pokemon.sprites.front_shiny ??
@@ -732,16 +754,15 @@ export function parseGameSprites(
 
 export function parseFormSprites(
   id: number,
-  pokemon: Pick<PokemonResponse, "sprites">,
+  pokemon: Pick<PokemonResponse, "name" | "sprites">,
 ): PokemonFormSprites {
   return {
     id,
     gameSprites: parseGameSprites({ id, sprites: pokemon.sprites }),
     defaultSprite: pokemon.sprites.front_default,
     shinyDefaultSprite: pokemon.sprites.front_shiny ?? null,
-    artwork: pokemon.sprites.other?.["official-artwork"]?.front_default ?? null,
-    shinyArtwork:
-      pokemon.sprites.other?.["official-artwork"]?.front_shiny ?? null,
+    artwork: parseArtwork(pokemon),
+    shinyArtwork: parseShinyArtwork(pokemon),
   };
 }
 
