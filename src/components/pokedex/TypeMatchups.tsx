@@ -31,14 +31,17 @@ function multiplierTextClass(multiplier: number, tone: Tone): string {
 
 function Group({
   title,
+  description,
   children,
 }: {
   title: string;
+  description: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4">
       <h4 className="text-base font-semibold">{title}</h4>
+      <p className="-mt-3 text-sm text-muted">{description}</p>
       {children}
     </div>
   );
@@ -99,41 +102,51 @@ export function TypeMatchups({
     <div
       className={`grid gap-6 ${stacked ? "" : "lg:grid-cols-2 lg:gap-8"}`}
     >
-      <Group title={t("matchup.offensive")}>
+      <Group
+        title={t("matchup.attacks")}
+        description={t("matchup.offenseDescription")}
+      >
         <Category
-          title={t("matchup.superEffective")}
+          title={t("matchup.attackStrong")}
           items={withMultiplier(offense.superEffective, 2)}
           side="offense"
         />
         <Category
-          title={t("matchup.notVeryEffective")}
+          title={t("matchup.attackWeak")}
           items={withMultiplier(offense.notVeryEffective, 0.5)}
           side="offense"
         />
         <Category
-          title={t("matchup.noEffect")}
+          title={t("matchup.attackNone")}
           items={withMultiplier(offense.noEffect, 0)}
           side="offense"
         />
       </Group>
 
-      <Group title={t("matchup.defensive")}>
+      <Group
+        title={t("matchup.defenseHeading")}
+        description={t("matchup.defenseDescription")}
+      >
         <Category
-          title={t("matchup.vulnerable")}
+          title={t("matchup.defenseWeak")}
           items={vulnerableTo(matchups.defense)}
           side="defense"
         />
         <Category
-          title={t("matchup.resistant")}
+          title={t("matchup.defenseResistant")}
           items={resistantTo(matchups.defense)}
           side="defense"
         />
         <Category
-          title={t("matchup.immune")}
+          title={t("matchup.defenseImmune")}
           items={immuneTo(matchups.defense)}
           side="defense"
         />
       </Group>
+
+      <p className="col-span-full border-t border-border/40 pt-3 text-xs text-muted">
+        {t("matchup.multiplierLegend")}
+      </p>
     </div>
   );
 }

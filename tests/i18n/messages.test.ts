@@ -36,6 +36,25 @@ describe("messages", () => {
     expect(translate("ko", "detail.gameDescription")).toBe("게임 설명");
   });
 
+  it("provides localized matchup explanations and damage labels", () => {
+    expect(translate("nl", "matchup.offenseDescription")).toContain("eigen Pokémon-types");
+    expect(translate("en", "matchup.offenseDescription")).toContain("own types");
+    expect(translate("de", "matchup.defenseDescription")).toContain("Schaden");
+    expect(translate("fr", "matchup.defenseDescription")).toContain("Dégâts");
+    expect(translate("ja", "matchup.defenseHeading")).toBe("防御");
+    expect(translate("es", "matchup.defenseWeak")).toBe("Recibe más daño de");
+    expect(translate("it", "matchup.defenseWeak")).toBe("Subisce più danni da");
+    expect(translate("ko", "matchup.defenseWeak")).toBe("더 큰 피해를 받는 타입");
+
+    for (const language of LANGUAGES) {
+      expect(translate(language, "matchup.attacks")).toBeTruthy();
+      expect(translate(language, "matchup.attackStrong")).toBeTruthy();
+      expect(translate(language, "matchup.defenseHeading")).toBeTruthy();
+      expect(translate(language, "matchup.defenseImmune")).toBeTruthy();
+      expect(translate(language, "matchup.multiplierLegend")).toBeTruthy();
+    }
+  });
+
   it("has no empty texts in any language", () => {
     for (const language of LANGUAGES) {
       expect(translateOptional(language, "app.title")).toBeTruthy();
