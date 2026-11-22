@@ -126,14 +126,14 @@ export function FormPicker({
                       onClick={() => onSelect(form.id)}
                       aria-label={label}
                       aria-pressed={active}
-                      className="group flex w-full flex-col items-center gap-1.5 rounded-xl text-center text-xs focus-visible:outline-2 focus-visible:outline-selected"
+                      className="group flex w-full flex-col items-center gap-1.5 rounded-xl text-center text-xs focus-visible:outline-none"
                   >
                 <span
                     aria-hidden="true"
                     className={`flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors ${
                         active
                             ? "border-selected bg-surface-muted"
-                            : "border-border group-hover:border-muted group-hover:bg-surface-muted"
+                            : "border-border hover:border-muted hover:bg-surface-muted"
                     }`}
                 >
                   <FormSpriteImage
@@ -145,7 +145,7 @@ export function FormPicker({
                       fallbackToLatestGameSprite={!active}
                   />
                 </span>
-                    <span className="w-full break-words leading-tight">
+                    <span className="w-full break-words leading-tight group-focus-visible:underline group-focus-visible:decoration-2 group-focus-visible:underline-offset-2">
                   {formDataLoading && !form.isDefault ? (
                       <span
                           aria-hidden="true"

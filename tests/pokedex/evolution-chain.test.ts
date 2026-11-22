@@ -87,7 +87,7 @@ describe("EvolutionChain image mode", () => {
     const unselected = buttons.find((button) =>
       button.includes('src="/regional-sv.png"'),
     );
-    const tileClass = 'flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors focus-visible:outline-2 focus-visible:outline-selected ';
+    const tileClass = 'group flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors focus-visible:outline-none ';
 
     expect(selected).toBeDefined();
     expect(selected).toContain(`${tileClass}border-selected bg-surface-muted"`);
@@ -97,9 +97,14 @@ describe("EvolutionChain image mode", () => {
       `${tileClass}border-border hover:border-muted hover:bg-surface-muted"`,
     );
     expect(unselected).toContain('class="size-20 object-contain');
+    expect(unselected).toContain(
+      "group-focus-visible:underline group-focus-visible:decoration-2 group-focus-visible:underline-offset-2",
+    );
     const spriteIndex = unselected!.indexOf('src="/regional-sv.png"');
     const numberIndex = unselected!.indexOf('class="text-xs text-muted"');
-    const nameIndex = unselected!.indexOf('class="text-sm font-medium"');
+    const nameIndex = unselected!.indexOf(
+      'class="text-sm font-medium group-focus-visible:underline',
+    );
     expect(spriteIndex).toBeGreaterThan(-1);
     expect(spriteIndex).toBeLessThan(numberIndex);
     expect(numberIndex).toBeLessThan(nameIndex);
@@ -120,6 +125,8 @@ describe("EvolutionChain image mode", () => {
 
     expect(selected).toContain("border-selected bg-surface-muted");
     expect(selected).not.toContain("hover:border-muted");
+    expect(selected).not.toContain("focus-visible:outline-2");
+    expect(selected).toContain("focus-visible:outline-none");
     expect(unselected).toContain(
       "border-border hover:border-muted hover:bg-surface-muted",
     );

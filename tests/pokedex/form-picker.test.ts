@@ -216,6 +216,19 @@ describe("FormPicker", () => {
     );
   });
 
+  it("keeps keyboard focus visible on the form name without outlining the whole option", () => {
+    const markup = renderPicker();
+    const formButton = [...markup.matchAll(/<button\b[\s\S]*?<\/button>/g)].find(
+        ([button]) => button.includes('aria-label="Standaard"'),
+    )?.[0];
+
+    expect(formButton).toContain("focus-visible:outline-none");
+    expect(formButton).not.toContain("focus-visible:outline-2");
+    expect(formButton).toContain(
+        "group-focus-visible:underline group-focus-visible:decoration-2 group-focus-visible:underline-offset-2",
+    );
+  });
+
   it("places the shiny control at the right of the title at every screen size", () => {
     const markup = renderPicker({ shiny: true });
 
