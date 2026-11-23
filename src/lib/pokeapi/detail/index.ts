@@ -9,336 +9,79 @@ import { evolutionIds } from "@/lib/pokedex/evolution";
 import { versionGroupOf } from "@/lib/pokedex/games";
 import {
   computeMatchups,
-  type Matchups,
   type TypeChart,
   type TypeRelations,
 } from "@/lib/pokedex/matchups";
-import { PokeApiError, fetchPokeApi, idFromUrl } from "./client";
+import { PokeApiError, fetchPokeApi, idFromUrl } from "../client";
 import {
   defaultGame,
   parseLearnsets,
-  type PokemonMovesResponse,
-} from "./learnsets";
+} from "../learnsets";
+import type {
+  PokemonGender,
+  PokemonAbility,
+  EvolutionNode,
+  PokemonForm,
+  PokemonFormSprites,
+  PastStats,
+  PastTypes,
+  PastAbilities,
+  PokemonDetail,
+} from "./types";
+import type {
+  PokemonResponse,
+  NameEntry,
+  PokemonFormResponse,
+  PokemonFormResourceResponse,
+  PokemonFormSelection,
+  FlavorTextEntry,
+  SpeciesResponse,
+  EvolutionChainResponse,
+  AbilityResponse,
+} from "./responses";
+import {
+  parseEvolution,
+  methodRefs,
+  withEvolutionNames,
+  withMethodNames,
+  type RefKind,
+} from "./evolution";
+import {
+  parseArtwork,
+  parseFormSprites,
+  parseGameSprites,
+  parseShinyArtwork,
+} from "./sprites";
 
-export type PokemonGender = { male: number; female: number };
-
-export type PokemonAbility = {
-  /** Place in the Pokémon's ability list (3 is the hidden ability). */
-  slot: number;
-  /** PokéAPI slug, e.g. "solar-power". */
-  name: string;
-  hidden: boolean;
-  names: LocalizedText;
-  descriptions: LocalizedText;
-  /** Full general effect, separate from short and game-specific descriptions. */
-  effectDescriptions: LocalizedText;
-  /** Ability flavor text per PokéAPI version group. */
-  gameDescriptions: Record<string, LocalizedText>;
-};
-
-export type PokemonStat = {
-  /** PokéAPI slug, e.g. "special-attack". */
-  name: string;
-  value: number;
-};
-
-/** An item, move or place an evolution asks for, with its names. */
-export type NamedRef = { name: string; names: LocalizedText };
-
-/**
- * One way a Pokémon evolves. PokéAPI lists several per step: alternatives,
- * and different ones per game. Only what applies is present.
- */
-export type EvolutionMethod = {
-  /** The game (version group) this way is for; null when PokéAPI names none. */
-  game: string | null;
-  /** The way PokéAPI marks as the usual one when a game has none of its own. */
-  isDefault: boolean;
-  /** Trigger slug, e.g. "level-up", "trade", "use-item". */
-  trigger: string;
-  level?: number;
-  item?: NamedRef;
-  heldItem?: NamedRef;
-  knownMove?: NamedRef;
-  usedMove?: NamedRef;
-  location?: NamedRef;
-  /** Type slug of a move the Pokémon must know, or of a party member. */
-  knownMoveType?: string;
-  partyType?: string;
-  /** Species slugs. */
-  partySpecies?: string;
-  tradeSpecies?: string;
-  region?: string;
-  /** Pokémon slugs of the form that evolves / that it evolves into, e.g. "vulpix-alola". */
-  requiredForm?: string;
-  evolvedForm?: string;
-  /** "day", "night", "dusk" or "full-moon". */
-  timeOfDay?: string;
-  moveCount?: number;
-  happiness?: number;
-  affection?: number;
-  beauty?: number;
-  steps?: number;
-  damageTaken?: number;
-  /** PokéAPI: 1 is female, 2 is male. */
-  gender?: number;
-  /** Attack against Defense: 1 higher, -1 lower, 0 equal. */
-  statsRelation?: number;
-  nearRock?: true;
-  rain?: true;
-  multiplayer?: true;
-  upsideDown?: true;
-};
-
-export type EvolutionNode = {
-  id: number;
-  name: string;
-  /** Species names; empty until filled in by `getPokemonDetail`. */
-  names: LocalizedText;
-  /** The ways the previous stage evolves into this one; empty for the first stage. */
-  methods: EvolutionMethod[];
-  evolvesTo: EvolutionNode[];
-  /** Pokémon slug → pokemon id of the species' forms; filled in by `getPokemonDetail`. */
-  varieties?: Record<string, number>;
-  /** Pokémon id of the form to show instead of the default, e.g. Alolan Vulpix. */
-  formId?: number;
-};
-
-export type PokemonForm = {
-  /** PokéAPI pokemon or pokemon-form id, depending on how the form is stored. */
-  id: number;
-  /** PokéAPI pokemon slug, e.g. "charizard-mega-x". */
-  name: string;
-  isDefault: boolean;
-};
-
-export type PokemonFormSprites = {
-  id: number;
-  /** Localized form name from PokéAPI, when its form resource is available. */
-  names?: LocalizedText;
-  gameSprites: Record<string, GameSprite>;
-  defaultSprite: string | null;
-  shinyDefaultSprite: string | null;
-  artwork: string | null;
-  shinyArtwork: string | null;
-};
-
-/** Base stats of a generation and earlier: only the stats that differ from later ones. */
-export type PastStats = { generation: number; stats: PokemonStat[] };
-
-/** Types up to and including a generation. */
-export type PastTypes = { generation: number; types: string[] };
-
-/**
- * Abilities up to and including a generation, only the slots that differed
- * from later ones; `null` means the slot was empty.
- */
-export type PastAbilities = {
-  generation: number;
-  slots: { slot: number; ability: PokemonAbility | null }[];
-};
-
-/** The pixel sprite a game shows for a Pokémon. */
-export type GameSprite = { front: string; shiny: string | null };
-
-export type PokemonDetail = {
-  /** Species id (the national dex number). */
-  id: number;
-  /** The species slug, e.g. "charizard", also when a form is shown. */
-  speciesName: string;
-  /** The species name in each language PokéAPI has it in. */
-  names: LocalizedText;
-  /** Pokédex description per language (the newest game's entry). */
-  descriptions: LocalizedText;
-  /** Pokédex description per game (version group slug), where PokéAPI has one. */
-  gameDescriptions: Record<string, LocalizedText>;
-  /** Id of the form these details belong to. */
-  pokemonId: number;
-  /** Slug of the form, e.g. "charizard-mega-x". */
-  name: string;
-  forms: PokemonForm[];
-  /** Official artwork of this form; null if PokéAPI has none. */
-  artwork: string | null;
-  /** Artwork of the shiny version of this form; null if PokéAPI has none. */
-  shinyArtwork: string | null;
-  types: string[];
-  heightMeters: number;
-  weightKg: number;
-  /** The kind of Pokémon per language, e.g. "Mouse Pokémon". */
-  genus: LocalizedText;
-  /** Pixel sprites by PokéAPI version key (e.g. "red-blue"), where there are any. */
-  gameSprites: Record<string, GameSprite>;
-  /** Url of the newest cry; null if PokéAPI has none. */
-  cry: string | null;
-  /** Null for genderless Pokémon. */
-  gender: PokemonGender | null;
-  abilities: PokemonAbility[];
-  stats: PokemonStat[];
-  /** Stats as they were in earlier generations, oldest first. */
-  pastStats: PastStats[];
-  /** Games this form has moves in, newest first; empty without any moves. */
-  games: string[];
-  /** The game shown first: the newest one with level-up moves. */
-  defaultGame: string | null;
-  /** Abilities as they were in earlier generations, oldest first. */
-  pastAbilities: PastAbilities[];
-  /** Types as they were in earlier generations, oldest first. */
-  pastTypes: PastTypes[];
-  /** Damage relations of this form's types, now and in the past. */
-  typeCharts: TypeChart[];
-  /** How the types of this form match up against the other types. */
-  matchups: Matchups;
-  /** Root of the evolution family; the same tree for every member. */
-  evolution: EvolutionNode;
-};
-
-type PokemonResponse = {
-  id: number;
-  name: string;
-  height: number;
-  weight: number;
-  cries?: { latest?: string | null; legacy?: string | null };
-  types: { slot: number; type: { name: string } }[];
-  abilities: {
-    slot: number;
-    is_hidden: boolean;
-    ability: { name: string };
-  }[];
-  stats: { base_stat: number; stat: { name: string } }[];
-  /** Only used for the list of games; the moves themselves load separately. */
-  moves?: PokemonMovesResponse["moves"];
-  forms?: { name: string; url: string }[];
-  past_stats?: {
-    generation: { url: string };
-    stats: { base_stat: number; stat: { name: string } }[];
-  }[];
-  past_abilities?: {
-    generation: { url: string };
-    abilities: {
-      slot: number;
-      is_hidden: boolean;
-      ability: { name: string } | null;
-    }[];
-  }[];
-  past_types?: {
-    generation: { url: string };
-    types: { slot: number; type: { name: string } }[];
-  }[];
-  sprites: {
-    front_default: string | null;
-    front_shiny?: string | null;
-    versions?: Record<
-      string,
-      Record<
-        string,
-        { front_default?: string | null; front_shiny?: string | null }
-      >
-    >;
-    other?: {
-      home?: {
-        front_default?: string | null;
-        front_shiny?: string | null;
-      };
-      "official-artwork"?: {
-        front_default: string | null;
-        front_shiny?: string | null;
-      };
-    };
-  };
-};
-
-type NameEntry = { name: string; language: { name: string } };
-
-type PokemonFormResponse = { form_names: NameEntry[] };
-
-type PokemonFormResourceResponse = PokemonFormResponse & {
-  id: number;
-  name: string;
-  is_default: boolean;
-  pokemon: { name: string; url: string };
-  types: PokemonResponse["types"];
-  sprites: PokemonResponse["sprites"];
-};
-
-type PokemonFormSelection = {
-  form: PokemonForm;
-  pokemonId: number;
-  pokemon?: PokemonResponse;
-  formResourceId?: number;
-};
-
-type FlavorTextEntry = {
-  flavor_text: string;
-  language: { name: string };
-  version?: { name: string };
-};
-
-type SpeciesResponse = {
-  id: number;
-  name: string;
-  names: NameEntry[];
-  flavor_text_entries: FlavorTextEntry[];
-  gender_rate: number;
-  genera: { genus: string; language: { name: string } }[];
-  evolution_chain: { url: string };
-  varieties: { is_default: boolean; pokemon: { name: string; url: string } }[];
-};
-
-type RefResponse = { name: string } | null;
-
-type EvolutionDetailResponse = {
-  min_level: number | null;
-  item: RefResponse;
-  trigger: { name: string };
-  version_group?: { name: string } | null;
-  is_default?: boolean;
-  held_item?: RefResponse;
-  known_move?: RefResponse;
-  known_move_type?: RefResponse;
-  used_move?: RefResponse;
-  location?: RefResponse;
-  party_type?: RefResponse;
-  party_species?: RefResponse;
-  trade_species?: RefResponse;
-  region?: RefResponse;
-  required_pokemon_form?: RefResponse;
-  evolved_pokemon_form?: RefResponse;
-  time_of_day?: string;
-  min_move_count?: number | null;
-  min_happiness?: number | null;
-  min_affection?: number | null;
-  min_beauty?: number | null;
-  min_steps?: number | null;
-  min_damage_taken?: number | null;
-  gender?: number | null;
-  relative_physical_stats?: number | null;
-  near_special_rock?: boolean;
-  needs_overworld_rain?: boolean;
-  needs_multiplayer?: boolean;
-  turn_upside_down?: boolean;
-};
-
-type ChainLinkResponse = {
-  species: { name: string; url: string };
-  evolution_details: EvolutionDetailResponse[];
-  evolves_to: ChainLinkResponse[];
-};
-
-type EvolutionChainResponse = { chain: ChainLinkResponse };
-
-type AbilityResponse = {
-  names: NameEntry[];
-  effect_entries: {
-    effect: string;
-    short_effect: string;
-    language: { name: string };
-  }[];
-  flavor_text_entries: {
-    flavor_text: string;
-    language: { name: string };
-    version_group?: { name: string };
-  }[];
-};
+export type {
+  PokemonGender,
+  PokemonAbility,
+  PokemonStat,
+  NamedRef,
+  EvolutionMethod,
+  EvolutionNode,
+  PokemonForm,
+  PokemonFormSprites,
+  PastStats,
+  PastTypes,
+  PastAbilities,
+  GameSprite,
+  PokemonDetail,
+} from "./types";
+export {
+  parseEvolutionMethod,
+  parseEvolution,
+  methodRefs,
+  withEvolutionNames,
+  withMethodNames,
+  type RefKind,
+} from "./evolution";
+export {
+  parseArtwork,
+  parseFormSprites,
+  parseGameSprites,
+  parseShinyArtwork,
+} from "./sprites";
 
 /** PokéAPI gives the female chance in eighths; -1 means genderless. */
 export function parseGender(genderRate: number): PokemonGender | null {
@@ -665,251 +408,10 @@ function arceusPastTypes(types: string[]): PastTypes[] {
   return past;
 }
 
-export function parseArtwork(
-  pokemon: Pick<PokemonResponse, "name" | "sprites">,
-): string | null {
-  if (pokemon.name.startsWith("unown-")) {
-    return (
-      pokemon.sprites.other?.home?.front_default ??
-      pokemon.sprites.front_default ??
-      null
-    );
-  }
-  return (
-    pokemon.sprites.other?.["official-artwork"]?.front_default ??
-    pokemon.sprites.front_default ??
-    null
-  );
-}
-
-export function parseShinyArtwork(
-  pokemon: Pick<PokemonResponse, "name" | "sprites">,
-): string | null {
-  if (pokemon.name.startsWith("unown-")) {
-    return (
-      pokemon.sprites.other?.home?.front_shiny ??
-      pokemon.sprites.front_shiny ??
-      null
-    );
-  }
-  return (
-    pokemon.sprites.other?.["official-artwork"]?.front_shiny ??
-    pokemon.sprites.front_shiny ??
-    null
-  );
-}
-
-// PokéAPI has the Black and White Kyurem sprites swapped in Scarlet/Violet
-// (Black = 10022, White = 10023). Remove once the upstream sprites are fixed.
-const KYUREM_SCARLET_VIOLET_SPRITE_BASE =
-  "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/";
-
-function correctKyuremScarletVioletSprite(
-  id: number,
-  game: string,
-  url: string,
-): string {
-  if (game !== "scarlet-violet" || (id !== 10022 && id !== 10023)) return url;
-
-  const otherId = id === 10022 ? 10023 : 10022;
-  const normalSprite = `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}${id}.webp`;
-  if (url === normalSprite) {
-    return `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}${otherId}.webp`;
-  }
-
-  const shinySprite = `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}shiny/${id}.webp`;
-  if (url === shinySprite) {
-    return `${KYUREM_SCARLET_VIOLET_SPRITE_BASE}shiny/${otherId}.webp`;
-  }
-  return url;
-}
-
-/**
- * The front sprite per game, by the version key PokéAPI uses (it is spread
- * over generations). The menu "icons" are not game sprites.
- */
-export function parseGameSprites(
-  pokemon: Pick<PokemonResponse, "id" | "sprites">,
-): Record<string, GameSprite> {
-  const result: Record<string, GameSprite> = {};
-  for (const generation of Object.values(pokemon.sprites.versions ?? {})) {
-    for (const [key, sprite] of Object.entries(generation)) {
-      if (key === "icons" || !sprite.front_default) continue;
-      result[key] = {
-        front: correctKyuremScarletVioletSprite(
-          pokemon.id,
-          key,
-          sprite.front_default,
-        ),
-        shiny: sprite.front_shiny
-          ? correctKyuremScarletVioletSprite(
-              pokemon.id,
-              key,
-              sprite.front_shiny,
-            )
-          : null,
-      };
-    }
-  }
-  return result;
-}
-
-export function parseFormSprites(
-  id: number,
-  pokemon: Pick<PokemonResponse, "name" | "sprites">,
-): PokemonFormSprites {
-  return {
-    id,
-    gameSprites: parseGameSprites({ id, sprites: pokemon.sprites }),
-    defaultSprite: pokemon.sprites.front_default,
-    shinyDefaultSprite: pokemon.sprites.front_shiny ?? null,
-    artwork: parseArtwork(pokemon),
-    shinyArtwork: parseShinyArtwork(pokemon),
-  };
-}
-
 export function parsePokemonFormNames(
   form: PokemonFormResponse,
 ): LocalizedText {
   return parseLocalizedNames(form.form_names ?? []);
-}
-
-const isSet = <T>(value: T | null | undefined | false | ""): value is T =>
-  value !== null && value !== undefined && value !== false && value !== "";
-
-const ref = (response: RefResponse | undefined): NamedRef | undefined =>
-  response ? { name: response.name, names: {} } : undefined;
-
-/** One entry of PokéAPI's `evolution_details`, keeping what is set. */
-export function parseEvolutionMethod(
-  detail: EvolutionDetailResponse,
-): EvolutionMethod {
-  const method: EvolutionMethod = {
-    game: detail.version_group?.name ?? null,
-    isDefault: detail.is_default ?? false,
-    trigger: detail.trigger.name,
-  };
-  if (isSet(detail.min_level)) method.level = detail.min_level;
-  const refs = {
-    item: ref(detail.item),
-    heldItem: ref(detail.held_item),
-    knownMove: ref(detail.known_move),
-    usedMove: ref(detail.used_move),
-    location: ref(detail.location),
-  };
-  for (const [key, value] of Object.entries(refs)) {
-    if (value) method[key as keyof typeof refs] = value;
-  }
-  if (detail.known_move_type)
-    method.knownMoveType = detail.known_move_type.name;
-  if (detail.party_type) method.partyType = detail.party_type.name;
-  if (detail.party_species) method.partySpecies = detail.party_species.name;
-  if (detail.trade_species) method.tradeSpecies = detail.trade_species.name;
-  if (detail.region) method.region = detail.region.name;
-  if (detail.required_pokemon_form)
-    method.requiredForm = detail.required_pokemon_form.name;
-  if (detail.evolved_pokemon_form)
-    method.evolvedForm = detail.evolved_pokemon_form.name;
-  if (isSet(detail.time_of_day)) method.timeOfDay = detail.time_of_day;
-  if (isSet(detail.min_move_count)) method.moveCount = detail.min_move_count;
-  if (isSet(detail.min_happiness)) method.happiness = detail.min_happiness;
-  if (isSet(detail.min_affection)) method.affection = detail.min_affection;
-  if (isSet(detail.min_beauty)) method.beauty = detail.min_beauty;
-  if (isSet(detail.min_steps)) method.steps = detail.min_steps;
-  if (isSet(detail.min_damage_taken))
-    method.damageTaken = detail.min_damage_taken;
-  if (isSet(detail.gender)) method.gender = detail.gender;
-  if (isSet(detail.relative_physical_stats)) {
-    method.statsRelation = detail.relative_physical_stats;
-  }
-  if (detail.near_special_rock) method.nearRock = true;
-  if (detail.needs_overworld_rain) method.rain = true;
-  if (detail.needs_multiplayer) method.multiplayer = true;
-  if (detail.turn_upside_down) method.upsideDown = true;
-  return method;
-}
-
-export function parseEvolution(link: ChainLinkResponse): EvolutionNode {
-  return {
-    id: idFromUrl(link.species.url),
-    name: link.species.name,
-    names: {},
-    methods: link.evolution_details.map(parseEvolutionMethod),
-    evolvesTo: link.evolves_to.map(parseEvolution),
-  };
-}
-
-export type RefKind = "item" | "move" | "location";
-
-const REF_KINDS: Record<RefKind, (keyof EvolutionMethod)[]> = {
-  item: ["item", "heldItem"],
-  move: ["knownMove", "usedMove"],
-  location: ["location"],
-};
-
-/** The items, moves and places named anywhere in the tree, without doubles. */
-export function methodRefs(node: EvolutionNode): Record<RefKind, string[]> {
-  const found: Record<RefKind, Set<string>> = {
-    item: new Set(),
-    move: new Set(),
-    location: new Set(),
-  };
-  const visit = (current: EvolutionNode) => {
-    for (const method of current.methods) {
-      for (const kind of Object.keys(REF_KINDS) as RefKind[]) {
-        for (const key of REF_KINDS[kind]) {
-          const value = method[key] as NamedRef | undefined;
-          if (value) found[kind].add(value.name);
-        }
-      }
-    }
-    current.evolvesTo.forEach(visit);
-  };
-  visit(node);
-  return {
-    item: [...found.item],
-    move: [...found.move],
-    location: [...found.location],
-  };
-}
-
-/** Fills in the names of the items, moves and places of every method. */
-export function withMethodNames(
-  node: EvolutionNode,
-  lookup: (kind: RefKind, name: string) => LocalizedText,
-): EvolutionNode {
-  const named = (kind: RefKind, value: NamedRef | undefined) =>
-    value && { ...value, names: lookup(kind, value.name) };
-  return {
-    ...node,
-    methods: node.methods.map((method) => {
-      const result: EvolutionMethod = { ...method };
-      for (const kind of Object.keys(REF_KINDS) as RefKind[]) {
-        for (const key of REF_KINDS[kind]) {
-          const value = named(kind, method[key] as NamedRef | undefined);
-          if (value) (result as Record<string, unknown>)[key] = value;
-        }
-      }
-      return result;
-    }),
-    evolvesTo: node.evolvesTo.map((child) => withMethodNames(child, lookup)),
-  };
-}
-
-/** Fills in the species names of every stage. */
-export function withEvolutionNames(
-  node: EvolutionNode,
-  namesById: ReadonlyMap<number, LocalizedText>,
-  varietiesById: ReadonlyMap<number, Record<string, number>> = new Map(),
-): EvolutionNode {
-  return {
-    ...node,
-    names: namesById.get(node.id) ?? {},
-    varieties: varietiesById.get(node.id) ?? {},
-    evolvesTo: node.evolvesTo.map((child) =>
-      withEvolutionNames(child, namesById, varietiesById),
-    ),
-  };
 }
 
 type AbilityTexts = Record<
