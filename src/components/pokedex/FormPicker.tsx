@@ -7,6 +7,7 @@ import type {
 } from "@/lib/pokeapi/detail";
 import { formatFormLabel, formatName } from "@/lib/pokedex/format";
 import { formSpriteCandidates } from "@/lib/pokedex/game-detail";
+import { selectableCardState } from "./selectable-style";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
@@ -149,11 +150,7 @@ export function FormPicker({
                   >
                 <span
                     aria-hidden="true"
-                    className={`flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors group-focus-visible:border-dotted ${
-                        active
-                            ? "border-selected bg-surface-muted"
-                            : "border-border hover:border-muted hover:bg-surface-muted"
-                    }`}
+                    className={`flex size-20 items-center justify-center overflow-hidden rounded-xl border-2 p-2 transition-colors group-focus-visible:border-dotted ${selectableCardState(active)}`}
                 >
                   <FormSpriteImage
                       key={`${form.id}:${game ?? ""}:${shiny === true}:${showSprite}:${!active}`}

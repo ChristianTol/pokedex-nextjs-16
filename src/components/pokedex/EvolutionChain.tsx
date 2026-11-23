@@ -14,6 +14,7 @@ import {
   type EvolutionStep,
 } from "@/lib/pokedex/evolution";
 import { ItemSprite } from "./ItemSprite";
+import { selectableCardState } from "./selectable-style";
 import { SparkleIcon } from "./SparkleIcon";
 
 type Props = {
@@ -153,11 +154,7 @@ function EvolutionButton({
       type="button"
       onClick={() => onSelect(node.id, node.formId)}
       aria-current={current ? "true" : undefined}
-      className={`flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors focus-visible:outline-none focus-visible:border-dotted ${
-        current
-          ? "border-selected bg-surface-muted"
-          : "border-border hover:border-muted hover:bg-surface-muted"
-      }`}
+      className={`flex w-24 flex-col sm:w-28 lg:w-24 xl:w-28 items-center gap-1 rounded-xl border p-2 text-center transition-colors focus-visible:outline-none focus-visible:border-dotted ${selectableCardState(current)}`}
     >
       <EvolutionSprite
         key={`${node.formId ?? node.id}:${game ?? ""}:${shiny}:${showSprite}:${sprite ? JSON.stringify(sprite) : ""}`}

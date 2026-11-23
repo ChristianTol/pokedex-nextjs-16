@@ -699,6 +699,8 @@ export function parseShinyArtwork(
   );
 }
 
+// PokéAPI has the Black and White Kyurem sprites swapped in Scarlet/Violet
+// (Black = 10022, White = 10023). Remove once the upstream sprites are fixed.
 const KYUREM_SCARLET_VIOLET_SPRITE_BASE =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/scarlet-violet/";
 
