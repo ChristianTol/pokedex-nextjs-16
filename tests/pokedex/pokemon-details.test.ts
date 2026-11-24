@@ -456,6 +456,26 @@ describe("PokemonDetails", () => {
     } as unknown as PokemonDetail;
 
     expect(render(detail, null)).toContain("Geen beschrijving beschikbaar.");
-    expect(render(detail, null)).not.toContain("aria-pressed");
+    // No ability toggle (the matchups section has its own).
+    expect(render(detail, null)).not.toContain("Spelbeschrijving");
+    expect(render(detail, null)).not.toContain("Algemeen effect");
+  });
+
+  it("offers a toggle between the Pokémon's own types and its learnable moves", () => {
+    const detail = {
+      stats: [{ name: "hp", value: 45 }],
+      evolution: {},
+      name: "bulbasaur",
+      id: 1,
+      pokemonId: 1,
+      abilities: [],
+      matchups: [],
+    } as unknown as PokemonDetail;
+    const markup = render(detail, null);
+
+    expect(markup).toMatch(
+      /<button[^>]*aria-pressed="false"[^>]*>Eigen types<\/button>/,
+    );
+    expect(markup).not.toContain("Aan te leren moves");
   });
 });

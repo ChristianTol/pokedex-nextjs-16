@@ -88,13 +88,22 @@ function Category({
 export function TypeMatchups({
   matchups,
   stacked = false,
+  offense: offenseOverride,
+  offenseDescription,
+  offenseNotice,
 }: {
   matchups: Matchups;
   /** Offensive above defensive, for narrow spots (e.g. next to another Pokémon). */
   stacked?: boolean;
+  /** Replaces the damage of the Pokémon's own types, e.g. with that of its moves. */
+  offense?: Matchups["offense"];
+  /** Explains where `offense` comes from; defaults to the own-types text. */
+  offenseDescription?: string;
+  /** Shown instead of the offensive categories (e.g. while the moves load). */
+  offenseNotice?: string;
 }) {
   const { t } = useLanguage();
-  const offense = offenseGroups(matchups.offense);
+  const offense = offenseGroups(offenseOverride ?? matchups.offense);
   const withMultiplier = (types: string[], multiplier: number) =>
     types.map((type) => ({ type, multiplier }));
 
@@ -104,23 +113,29 @@ export function TypeMatchups({
     >
       <Group
         title={t("matchup.attacks")}
-        description={t("matchup.offenseDescription")}
+        description={offenseDescription ?? t("matchup.offenseDescription")}
       >
-        <Category
-          title={t("matchup.attackStrong")}
-          items={withMultiplier(offense.superEffective, 2)}
-          side="offense"
-        />
-        <Category
-          title={t("matchup.attackWeak")}
-          items={withMultiplier(offense.notVeryEffective, 0.5)}
-          side="offense"
-        />
-        <Category
-          title={t("matchup.attackNone")}
-          items={withMultiplier(offense.noEffect, 0)}
-          side="offense"
-        />
+        {offenseNotice ? (
+          <p className="text-sm text-muted">{offenseNotice}</p>
+        ) : (
+          <>
+            <Category
+              title={t("matchup.attackStrong")}
+              items={withMultiplier(offense.superEffective, 2)}
+              side="offense"
+            />
+            <Category
+              title={t("matchup.attackWeak")}
+              items={withMultiplier(offense.notVeryEffective, 0.5)}
+              side="offense"
+            />
+            <Category
+              title={t("matchup.attackNone")}
+              items={withMultiplier(offense.noEffect, 0)}
+              side="offense"
+            />
+          </>
+        )}
       </Group>
 
       <Group

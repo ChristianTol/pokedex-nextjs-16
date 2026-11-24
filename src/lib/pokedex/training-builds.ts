@@ -1,6 +1,7 @@
 import type { PokemonMoves, MoveInfo } from "@/lib/pokeapi/moves";
 import type { PokemonStat } from "@/lib/pokeapi/detail";
 import { gameGeneration } from "./games";
+import { learnableMoves } from "./learnable-moves";
 import type { TrainingAdvice } from "./training-advice";
 
 export type TrainingBuildKind = "offensive" | "defensive";
@@ -46,18 +47,6 @@ function preferredDamageClass(
   const specialAttack =
     stats.find(({ name }) => name === "special-attack")?.value ?? 0;
   return attack >= specialAttack ? "physical" : "special";
-}
-
-function learnableMoves(moves: PokemonMoves): MoveInfo[] {
-  const names = new Set([
-    ...moves.levelUp.map(({ move }) => move),
-    ...moves.tutor,
-    ...moves.machine,
-  ]);
-  const knownMoves = new Map(
-    Object.values(moves.moves).map((move) => [move.name, move]),
-  );
-  return [...knownMoves.values()].filter((move) => names.has(move.name));
 }
 
 function rankDamagingMoves(

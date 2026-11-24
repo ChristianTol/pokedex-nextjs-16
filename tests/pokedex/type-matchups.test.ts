@@ -55,4 +55,31 @@ describe("TypeMatchups", () => {
     expect(markup).toContain("Krijgt extra schade van");
     expect(markup).toContain(">Geen</p>");
   });
+
+  it("can show the damage of another source with its own explanation", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TypeMatchups, {
+        matchups,
+        offense: { water: 2, fire: 0.5 },
+        offenseDescription: "Beste move die geleerd kan worden.",
+      }),
+    );
+
+    expect(markup).toContain("Beste move die geleerd kan worden.");
+    expect(markup).not.toContain("eigen Pokémon-types");
+    expect(markup).toContain("Krijgt extra schade van");
+  });
+
+  it("shows a notice instead of the offensive categories", () => {
+    const markup = renderToStaticMarkup(
+      createElement(TypeMatchups, {
+        matchups,
+        offenseNotice: "Moves laden…",
+      }),
+    );
+
+    expect(markup).toContain("Moves laden…");
+    expect(markup).not.toContain("Doet extra schade aan");
+    expect(markup).toContain("Krijgt extra schade van");
+  });
 });

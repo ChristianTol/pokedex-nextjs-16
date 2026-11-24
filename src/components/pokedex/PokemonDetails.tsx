@@ -1,9 +1,11 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
+import { useTypeEffectiveness } from "@/hooks/useTypeEffectiveness";
 import { pickText, type Language } from "@/lib/i18n/languages";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import { abilityDescriptionForGame } from "@/lib/pokedex/game-detail";
+import { moveOffense } from "@/lib/pokedex/move-matchups";
 import {
   formatHeight,
   formatName,
@@ -174,6 +176,28 @@ export function PokemonDetails({
     }
   }, [abilityDescriptionMode.game, game]);
 
+  const [matchupsByMoves, setMatchupsByMoves] = useState(false);
+  const typeEffectiveness = useTypeEffectiveness(matchupsByMoves);
+  const offenseByMoves = (() => {
+    if (!matchupsByMoves) return {};
+    if (moves.failed || typeEffectiveness.failed) {
+      return { notice: t("matchup.movesError") };
+    }
+    if (
+      moves.loading ||
+      typeEffectiveness.loading ||
+      !moves.data ||
+      moves.data.game !== game ||
+      !typeEffectiveness.data
+    ) {
+      return { notice: t("matchup.movesLoading") };
+    }
+    const offense = moveOffense(moves.data, typeEffectiveness.data);
+    return offense
+      ? { offense }
+      : { notice: t("matchup.noDamagingMoves") };
+  })();
+
   const statLabel = (name: string) => {
     const key = STAT_LABELS[name];
     return key ? t(key) : formatName(name);
@@ -290,8 +314,27 @@ export function PokemonDetails({
         )}
       </Section>
 
-      <Section title={t("detail.matchups")}>
-        <TypeMatchups matchups={detail.matchups} />
+      <Section
+        title={t("detail.matchups")}
+        action={
+          <button
+            type="button"
+            aria-pressed={matchupsByMoves}
+            onClick={() => setMatchupsByMoves((byMoves) => !byMoves)}
+            className="rounded-full border border-border/50 px-3 py-1 text-xs text-muted transition hover:border-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {t(matchupsByMoves ? "matchup.modeMoves" : "matchup.modeTypes")}
+          </button>
+        }
+      >
+        <TypeMatchups
+          matchups={detail.matchups}
+          offense={offenseByMoves.offense}
+          offenseNotice={offenseByMoves.notice}
+          offenseDescription={
+            matchupsByMoves ? t("matchup.offenseMovesDescription") : undefined
+          }
+        />
       </Section>
 
       <Section title={t("detail.trainingAdvice")}>
