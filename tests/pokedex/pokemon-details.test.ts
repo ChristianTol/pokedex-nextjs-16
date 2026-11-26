@@ -113,20 +113,20 @@ describe("PokemonDetails", () => {
     expect(markup).not.toContain("rounded-full text-white");
     expect(markup.match(/viewBox="0 0 240 240"/g)).toHaveLength(2);
     expect(markup).toContain(
-      '<span>Aanval</span><span class="block font-semibold tabular-nums">359</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-orange-500"></span><span class="block min-w-0 max-w-full break-words">Aanval</span></span><span class="block font-semibold tabular-nums">359</span>',
     );
     expect(markup).toContain(
-      '<span>Snelheid</span><span class="block font-semibold tabular-nums text-foreground">328</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-pink-500"></span><span class="block min-w-0 max-w-full break-words">Snelheid</span></span><span class="block font-semibold tabular-nums text-foreground">328</span>',
     );
     expect(markup).toContain(
-      '<span>HP</span><span class="block font-semibold tabular-nums">302</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-red-500"></span><span class="block min-w-0 max-w-full break-words">HP</span></span><span class="block font-semibold tabular-nums">302</span>',
     );
     expect(markup).toContain(
-      '<span>Speciale aanval</span><span class="block font-semibold tabular-nums text-foreground">140</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-blue-500"></span><span class="block min-w-0 max-w-full break-words">Speciale aanval</span></span><span class="block font-semibold tabular-nums text-foreground">140</span>',
     );
     const calculatedStatLabels = [
       ...markup.matchAll(
-        /data-stat="([^"]+)"[^>]*><span>([^<]+)<\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/span>/g,
+        /data-stat="([^"]+)"[^>]*><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-[^"]+"><\/span><span class="block min-w-0 max-w-full break-words">([^<]+)<\/span><\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/span>/g,
       ),
     ].map(([, stat, label, value]) => ({ stat, label, value }));
     const expectedEvStatOrder = [
@@ -150,10 +150,10 @@ describe("PokemonDetails", () => {
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Verdediging");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      '<span>Verdediging</span><span class="block font-semibold tabular-nums text-foreground">284</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-yellow-500"></span><span class="block min-w-0 max-w-full break-words">Verdediging</span></span><span class="block font-semibold tabular-nums text-foreground">284</span>',
     );
     expect(markup).toContain(
-      '<span>Speciale verdediging</span><span class="block font-semibold tabular-nums">197</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-green-500"></span><span class="block min-w-0 max-w-full break-words">Speciale verdediging</span></span><span class="block font-semibold tabular-nums">197</span>',
     );
     expect(markup).toContain("Over deze voorbeelden");
     expect(markup).not.toContain("Gebalanceerd alternatief");

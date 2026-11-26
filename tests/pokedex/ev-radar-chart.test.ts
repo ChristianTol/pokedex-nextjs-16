@@ -46,41 +46,48 @@ describe("EvRadarChart", () => {
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain("Special Defense");
     const cornerLabels = [...markup.matchAll(
-      /data-stat="([^"]+)"[^>]*style="([^"]+)"><span>([^<]+)<\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">([^<]+)<\/span><\/span>/g,
-    )].map(([, stat, style, label, value]) => ({ stat, style, label, value }));
+      /data-stat="([^"]+)"[^>]*style="([^"]+)"><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full ([^"]+)"><\/span><span class="block min-w-0 max-w-full break-words">([^<]+)<\/span><\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">([^<]+)<\/span><\/span>/g,
+    )].map(([, stat, style, color, label, value]) => ({ stat, style, color, label, value }));
     expect(cornerLabels).toEqual([
-      { stat: "hp", style: "left:50%;top:7%;width:30%", label: "HP", value: "4" },
+      { stat: "hp", style: "left:50%;top:7%;width:30%", color: "bg-red-500", label: "HP", value: "4" },
       {
         stat: "attack",
         style: "left:90%;top:28%;width:20%",
+        color: "bg-orange-500",
         label: "Attack",
         value: "252",
       },
       {
         stat: "defense",
         style: "left:90%;top:72%;width:20%",
+        color: "bg-yellow-500",
         label: "Defense",
         value: "0",
       },
       {
         stat: "speed",
         style: "left:50%;top:93%;width:30%",
+        color: "bg-pink-500",
         label: "Speed",
         value: "252",
       },
       {
         stat: "special-defense",
         style: "left:10%;top:72%;width:20%",
+        color: "bg-green-500",
         label: "Special Defense",
         value: "0",
       },
       {
         stat: "special-attack",
         style: "left:10%;top:28%;width:20%",
+        color: "bg-blue-500",
         label: "Special Attack",
         value: "0",
       },
     ]);
+    expect(markup.match(/class="absolute -left-3 top-1 size-2 rounded-full bg-/g)).toHaveLength(6);
+    expect(markup.match(/class="absolute -translate-x-1\/2 -translate-y-1\/2 break-words text-center text-xs leading-tight/g)).toHaveLength(6);
     expect(markup).toContain(
       'data-stat="special-attack" data-nature-effect="up" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight font-semibold text-red-600 dark:text-red-400"',
     );
@@ -178,12 +185,12 @@ describe("EvRadarChart", () => {
     );
 
     expect(markup).toContain(
-      'data-stat="special-defense" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight" style="left:10%;top:72%;width:20%"><span>Spezial-Verteidigung</span><span class="block font-semibold tabular-nums">0</span></span>',
+      'data-stat="special-defense" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight" style="left:10%;top:72%;width:20%"><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-green-500"></span><span class="block min-w-0 max-w-full break-words">Spezial-Verteidigung</span></span><span class="block font-semibold tabular-nums">0</span></span>',
     );
     expect(markup).toContain("break-words text-center text-xs leading-tight");
   });
 
-  it("colors the nature-increased and decreased stat labels without adding markers", () => {
+  it("keeps stat color dots alongside nature-colored labels", () => {
     const markup = renderToStaticMarkup(
       createElement(EvRadarChart, {
         increasedStat: "hp",
@@ -206,6 +213,9 @@ describe("EvRadarChart", () => {
       'data-stat="speed" data-nature-effect="down" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight font-semibold text-blue-700 dark:text-blue-400"',
     );
     expect(markup.match(/data-nature-effect=/g)).toHaveLength(2);
+    expect(markup).toContain('class="absolute -left-3 top-1 size-2 rounded-full bg-red-500"');
+    expect(markup).toContain('class="absolute -left-3 top-1 size-2 rounded-full bg-pink-500"');
+    expect(markup.match(/class="absolute -left-3 top-1 size-2 rounded-full bg-/g)).toHaveLength(6);
     expect(markup).not.toContain("items-center justify-center rounded-full text-white");
     expect(markup).not.toContain("<path");
   });

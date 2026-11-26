@@ -229,7 +229,15 @@ export function EvRadarChart({
                 width: `${position.width}%`,
               }}
             >
-              <span>{stat.label}</span>
+              <span className="relative mx-auto block w-fit max-w-full">
+                <span
+                  aria-hidden="true"
+                  className={`absolute -left-3 top-1 size-2 rounded-full ${stat.color}`}
+                />
+                <span className="block min-w-0 max-w-full break-words">
+                  {stat.label}
+                </span>
+              </span>
               <span className={`block font-semibold tabular-nums${effect ? " text-foreground" : ""}`}>
                 {stat.displayValue ?? stat.value}
               </span>
