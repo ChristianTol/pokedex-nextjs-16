@@ -7,6 +7,7 @@ import {
   PokemonDetails,
   toggleAbilityDescriptionMode,
 } from "@/components/pokedex/PokemonDetails";
+import { toggleTrainingValueMode } from "@/components/pokedex/TrainingGuide";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import type { MoveInfo, PokemonMoves } from "@/lib/pokeapi/moves";
@@ -92,36 +93,78 @@ describe("PokemonDetails", () => {
     expect(markup).toContain(
       "Voorbeelden op basis van basisstats en beschikbare moves; niet competitief geoptimaliseerd.",
     );
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain("Toon EV-waarden");
+    expect(markup.match(/Berekende stats \(level 100\)/g)).toHaveLength(2);
+    expect(markup).toContain(
+      "De berekening gaat uit van level 100 en 31 IV’s. De grafiekvorm blijft de EV-verdeling tonen.",
+    );
     expect(markup).toContain("rounded-xl border border-border/50 p-4");
     expect(markup).toContain("Aanvallend voorbeeld");
     expect(markup).toContain('tracking-tight">Jolly</p>');
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Snelheid");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      '<span class="truncate">Aanval</span><span class="font-semibold tabular-nums">252</span>',
+      'data-stat="speed" data-nature-effect="up" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight font-semibold text-red-600 dark:text-red-400"',
     );
     expect(markup).toContain(
-      '<span class="truncate">Snelheid</span><span class="font-semibold tabular-nums">252</span>',
+      'data-stat="special-attack" data-nature-effect="down" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight font-semibold text-blue-700 dark:text-blue-400"',
     );
-    expect(markup).toContain("style=\"width:100%\"");
+    expect(markup).not.toContain("rounded-full text-white");
+    expect(markup.match(/viewBox="0 0 240 240"/g)).toHaveLength(2);
     expect(markup).toContain(
-      '<span class="truncate">HP</span><span class="font-semibold tabular-nums">4</span>',
+      '<span>Aanval</span><span class="block font-semibold tabular-nums">359</span>',
     );
+    expect(markup).toContain(
+      '<span>Snelheid</span><span class="block font-semibold tabular-nums text-foreground">328</span>',
+    );
+    expect(markup).toContain(
+      '<span>HP</span><span class="block font-semibold tabular-nums">302</span>',
+    );
+    expect(markup).toContain(
+      '<span>Speciale aanval</span><span class="block font-semibold tabular-nums text-foreground">140</span>',
+    );
+    const calculatedStatLabels = [
+      ...markup.matchAll(
+        /data-stat="([^"]+)"[^>]*><span>([^<]+)<\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/span>/g,
+      ),
+    ].map(([, stat, label, value]) => ({ stat, label, value }));
+    const expectedEvStatOrder = [
+      { stat: "hp", label: "HP" },
+      { stat: "attack", label: "Aanval" },
+      { stat: "defense", label: "Verdediging" },
+      { stat: "speed", label: "Snelheid" },
+      { stat: "special-defense", label: "Speciale verdediging" },
+      { stat: "special-attack", label: "Speciale aanval" },
+    ];
+    expect(calculatedStatLabels.slice(0, 6).map(({ stat, label }) => ({ stat, label }))).toEqual(expectedEvStatOrder);
+    expect(calculatedStatLabels.slice(6, 12).map(({ stat, label }) => ({ stat, label }))).toEqual(expectedEvStatOrder);
+    expect(calculatedStatLabels.map(({ value }) => value)).toEqual([
+      "302", "359", "196", "328", "196", "140",
+      "364", "296", "284", "236", "197", "140",
+    ]);
+    expect(calculatedStatLabels).toHaveLength(12);
+    expect(markup).not.toContain("grid w-full grid-cols-2 gap-x-3 gap-y-1.5");
     expect(markup).toContain("Verdedigend voorbeeld");
     expect(markup).toContain('tracking-tight">Impish</p>');
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Verdediging");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      '<span class="truncate">Verdediging</span><span class="font-semibold tabular-nums">252</span>',
+      '<span>Verdediging</span><span class="block font-semibold tabular-nums text-foreground">284</span>',
     );
     expect(markup).toContain(
-      '<span class="truncate">Speciale verdediging</span><span class="font-semibold tabular-nums">4</span>',
+      '<span>Speciale verdediging</span><span class="block font-semibold tabular-nums">197</span>',
     );
     expect(markup).toContain("Over deze voorbeelden");
     expect(markup).not.toContain("Gebalanceerd alternatief");
     expect(markup).not.toContain("128 Verdediging");
     expect(markup).not.toContain("128 Speciale verdediging");
     expect(markup).toContain("egg moves zijn niet meegenomen");
+  });
+
+  it("toggles the shared training chart value mode in both directions", () => {
+    expect(toggleTrainingValueMode("evs")).toBe("stats");
+    expect(toggleTrainingValueMode("stats")).toBe("evs");
   });
 
   it("shows game-specific suggestions and does not show stale moves while loading", () => {

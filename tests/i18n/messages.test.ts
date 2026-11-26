@@ -46,6 +46,11 @@ describe("messages", () => {
       expect(translate(language, "detail.natureRaises")).toBeTruthy();
       expect(translate(language, "detail.natureLowers")).toBeTruthy();
       expect(translate(language, "detail.evs")).toBeTruthy();
+      expect(translate(language, "detail.level100Stats")).toBeTruthy();
+      expect(translate(language, "detail.showLevel100Stats")).toBeTruthy();
+      expect(translate(language, "detail.showEvValues")).toBeTruthy();
+      expect(translate(language, "detail.level100StatAssumptions")).toBeTruthy();
+      expect(translate(language, "detail.unavailableStat")).toBeTruthy();
       expect(translate(language, "detail.suggestedMoves")).toBeTruthy();
       expect(translate(language, "detail.suggestedMovesLoading")).toBeTruthy();
       expect(translate(language, "detail.suggestedMovesError")).toBeTruthy();

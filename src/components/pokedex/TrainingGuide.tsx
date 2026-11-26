@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
 import { pickText } from "@/lib/i18n/languages";
@@ -6,6 +7,7 @@ import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import { formatName } from "@/lib/pokedex/format";
 import {
   defensiveTrainingAdviceForStats,
+  level100StatsForTrainingAdvice,
   trainingAdviceForStats,
   type TrainingAdvice,
   type TrainingNature,
@@ -15,9 +17,17 @@ import {
   type TrainingBuildKind,
 } from "@/lib/pokedex/training-builds";
 import { STAT_COLORS, STAT_LABELS } from "./stat-style";
+import { EvRadarChart } from "./EvRadarChart";
 import { TypeIcon } from "./TypeIcon";
 
-const MAX_EV_PER_STAT = 252;
+const EV_STAT_ORDER = [
+  "hp",
+  "attack",
+  "defense",
+  "speed",
+  "special-defense",
+  "special-attack",
+] as const;
 
 const TRAINING_NATURE_LABELS = {
   adamant: "nature.adamant",
@@ -29,6 +39,14 @@ const TRAINING_NATURE_LABELS = {
   modest: "nature.modest",
   timid: "nature.timid",
 } as const satisfies Record<TrainingNature, MessageKey>;
+
+export type TrainingValueMode = "evs" | "stats";
+
+export function toggleTrainingValueMode(
+  mode: TrainingValueMode,
+): TrainingValueMode {
+  return mode === "evs" ? "stats" : "evs";
+}
 
 function SuggestedMoves({
   advice,
@@ -99,6 +117,7 @@ function BuildCard({
   moves,
   game,
   kind,
+  showCalculatedStats,
 }: {
   title: string;
   icon: string;
@@ -107,12 +126,16 @@ function BuildCard({
   moves: PokemonMovesState;
   game: string | null;
   kind: TrainingBuildKind;
+  showCalculatedStats: boolean;
 }) {
   const { t } = useLanguage();
   const statLabel = (name: string) => {
     const key = STAT_LABELS[name];
     return key ? t(key) : formatName(name);
   };
+  const calculatedStats = advice
+    ? level100StatsForTrainingAdvice(detail.stats, advice)
+    : null;
 
   return (
     <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-border/50 p-4">
@@ -141,29 +164,23 @@ function BuildCard({
             </p>
           </div>
           <div>
-            <p className="mb-2 font-medium">{t("detail.evs")}</p>
-            <ul className="flex flex-col gap-2 text-sm">
-              {advice.evs.map(({ stat, value }) => (
-                <li
-                  key={stat}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1"
-                >
-                  <span className="truncate">{statLabel(stat)}</span>
-                  <span className="font-semibold tabular-nums">{value}</span>
-                  <div
-                    aria-hidden="true"
-                    className="col-span-2 h-2 overflow-hidden rounded-full bg-surface-muted"
-                  >
-                    <div
-                      className={`h-full rounded-full ${STAT_COLORS[stat] ?? "bg-accent"}`}
-                      style={{
-                        width: `${Math.min(100, (value / MAX_EV_PER_STAT) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <p className="mb-2 font-medium">
+              {t(showCalculatedStats ? "detail.level100Stats" : "detail.evs")}
+            </p>
+            <EvRadarChart
+              increasedStat={advice.increasedStat}
+              decreasedStat={advice.decreasedStat}
+              stats={EV_STAT_ORDER.map((stat) => ({
+                stat,
+                label: statLabel(stat),
+                value:
+                  advice.evs.find((ev) => ev.stat === stat)?.value ?? 0,
+                displayValue: showCalculatedStats
+                  ? (calculatedStats?.[stat] ?? t("detail.unavailableStat"))
+                  : undefined,
+                color: STAT_COLORS[stat] ?? "bg-accent",
+              }))}
+            />
           </div>
           <div>
             <p className="mb-2 font-medium">{t("detail.suggestedMoves")}</p>
@@ -194,6 +211,8 @@ export function TrainingGuide({
   game: string | null;
 }) {
   const { t } = useLanguage();
+  const [valueMode, setValueMode] = useState<TrainingValueMode>("stats");
+  const showCalculatedStats = valueMode === "stats";
   const offensive = trainingAdviceForStats(detail.stats, game);
   const defensive = defensiveTrainingAdviceForStats(detail.stats, game);
 
@@ -204,6 +223,25 @@ export function TrainingGuide({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">{t("detail.trainingAdviceSummary")}</p>
+      <div className="flex flex-col items-start gap-2">
+        <button
+          type="button"
+          aria-pressed={showCalculatedStats}
+          onClick={() =>
+            setValueMode((current) => toggleTrainingValueMode(current))
+          }
+          className="rounded-lg border border-border/50 bg-surface-muted px-3 py-1.5 text-sm font-medium hover:bg-surface-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {t(
+            showCalculatedStats
+              ? "detail.showEvValues"
+              : "detail.showLevel100Stats",
+          )}
+        </button>
+        <p className="text-xs text-muted">
+          {t("detail.level100StatAssumptions")}
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <BuildCard
           title={t("detail.offensiveExample")}
@@ -213,6 +251,7 @@ export function TrainingGuide({
           moves={moves}
           game={game}
           kind="offensive"
+          showCalculatedStats={showCalculatedStats}
         />
         <BuildCard
           title={t("detail.defensiveExample")}
@@ -222,6 +261,7 @@ export function TrainingGuide({
           moves={moves}
           game={game}
           kind="defensive"
+          showCalculatedStats={showCalculatedStats}
         />
       </div>
       <details className="text-xs text-muted">

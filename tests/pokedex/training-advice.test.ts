@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PokemonStat } from "@/lib/pokeapi/detail";
 import {
   defensiveTrainingAdviceForStats,
+  level100StatsForTrainingAdvice,
   trainingAdviceForStats,
 } from "@/lib/pokedex/training-advice";
 
@@ -84,6 +85,62 @@ describe("trainingAdviceForStats", () => {
     "unknown-game",
   ])("does not provide traditional EV advice for %s", (game) => {
     expect(trainingAdviceForStats(stats(100, 70, 50), game)).toBeNull();
+  });
+});
+
+describe("level100StatsForTrainingAdvice", () => {
+  it("calculates level-100 stats using 31 IVs, EVs, nature, and game rounding", () => {
+    const advice = trainingAdviceForStats(stats(130, 60, 100), "sword-shield");
+    expect(advice).not.toBeNull();
+
+    expect(level100StatsForTrainingAdvice(stats(130, 60, 100), advice!)).toEqual({
+      hp: 302,
+      attack: 359,
+      defense: 196,
+      "special-attack": 140,
+      "special-defense": 196,
+      speed: 328,
+    });
+  });
+
+  it("applies a raised defensive nature and its rounding to the right stats", () => {
+    const baseStats = stats(100, 70, 50).map((stat) =>
+      stat.name === "defense"
+        ? { ...stat, value: 120 }
+        : stat.name === "special-defense"
+          ? { ...stat, value: 80 }
+          : stat,
+    );
+    const advice = defensiveTrainingAdviceForStats(baseStats, "sword-shield");
+
+    expect(advice).not.toBeNull();
+    expect(level100StatsForTrainingAdvice(baseStats, advice!)).toMatchObject({
+      hp: 364,
+      defense: 372,
+      "special-defense": 197,
+      "special-attack": 158,
+    });
+  });
+
+  it("keeps Shedinja at one HP and marks missing or invalid base stats unavailable", () => {
+    const advice = defensiveTrainingAdviceForStats(
+      stats(100, 70, 50).map((stat) =>
+        stat.name === "hp" ? { ...stat, value: 1 } : stat,
+      ),
+      "sword-shield",
+    );
+    expect(advice).not.toBeNull();
+
+    expect(
+      level100StatsForTrainingAdvice(
+        [
+          { name: "hp", value: 1 },
+          { name: "attack", value: Number.NaN },
+        ],
+        advice!,
+      ),
+    ).toEqual({ hp: 1, attack: null });
+    expect(level100StatsForTrainingAdvice([], advice!)).toEqual({});
   });
 });
 

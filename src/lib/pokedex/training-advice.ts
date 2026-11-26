@@ -18,6 +18,8 @@ export type TrainingAdvice = {
   evs: { stat: string; value: number }[];
 };
 
+export type CalculatedLevel100Stats = Record<string, number | null>;
+
 const GAMES_WITHOUT_TRADITIONAL_EVS = new Set([
   "lets-go-pikachu-lets-go-eevee",
   "legends-arceus",
@@ -38,6 +40,40 @@ function statValue(stats: PokemonStat[], name: string): number | undefined {
 
 function isValidStat(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value) && value >= 0;
+}
+
+/** Calculates level-100 stats with 31 IVs and the supplied EVs and nature. */
+export function level100StatsForTrainingAdvice(
+  baseStats: PokemonStat[],
+  advice: TrainingAdvice,
+): CalculatedLevel100Stats {
+  return Object.fromEntries(
+    baseStats.map(({ name, value: baseStat }) => {
+      const ev = advice.evs.find((entry) => entry.stat === name)?.value ?? 0;
+      if (
+        !isValidStat(baseStat) ||
+        !Number.isInteger(ev) ||
+        ev < 0 ||
+        ev > MAX_EV_PER_STAT
+      ) {
+        return [name, null];
+      }
+
+      if (name === "hp" && baseStat === 1) return [name, 1];
+
+      const pointsFromEffort = Math.floor(ev / 4);
+      const baseValue = 2 * baseStat + 31 + pointsFromEffort;
+      if (name === "hp") return [name, baseValue + 110];
+
+      const natureModifier =
+        name === advice.increasedStat
+          ? 1.1
+          : name === advice.decreasedStat
+            ? 0.9
+            : 1;
+      return [name, Math.floor((baseValue + 5) * natureModifier)];
+    }),
+  );
 }
 
 export function trainingAdviceForStats(
