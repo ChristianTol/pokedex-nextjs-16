@@ -105,28 +105,32 @@ describe("PokemonDetails", () => {
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Snelheid");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      'data-stat="speed" data-nature-effect="up" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight font-semibold text-red-600 dark:text-red-400"',
+      'data-stat="speed" data-nature-effect="up" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight"',
     );
     expect(markup).toContain(
-      'data-stat="special-attack" data-nature-effect="down" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight font-semibold text-blue-700 dark:text-blue-400"',
+      'data-stat="special-attack" data-nature-effect="down" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight"',
     );
+    expect(markup).toContain('<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span>');
+    expect(markup).toContain('<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-blue-700 dark:text-blue-400">↓</span>');
+    expect(markup).not.toContain("leading-tight font-semibold text-red-600");
+    expect(markup).not.toContain("leading-tight font-semibold text-blue-700");
     expect(markup).not.toContain("rounded-full text-white");
     expect(markup.match(/viewBox="0 0 240 240"/g)).toHaveLength(2);
     expect(markup).toContain(
       '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-orange-500"></span><span class="block min-w-0 max-w-full break-words">Aanval</span></span><span class="block font-semibold tabular-nums">359</span>',
     );
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-pink-500"></span><span class="block min-w-0 max-w-full break-words">Snelheid</span></span><span class="block font-semibold tabular-nums text-foreground">328</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-pink-500"></span><span class="block min-w-0 max-w-full break-words">Snelheid</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span></span><span class="block font-semibold tabular-nums text-foreground">328</span>',
     );
     expect(markup).toContain(
       '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-red-500"></span><span class="block min-w-0 max-w-full break-words">HP</span></span><span class="block font-semibold tabular-nums">302</span>',
     );
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-blue-500"></span><span class="block min-w-0 max-w-full break-words">Speciale aanval</span></span><span class="block font-semibold tabular-nums text-foreground">140</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-blue-500"></span><span class="block min-w-0 max-w-full break-words">Speciale aanval</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-blue-700 dark:text-blue-400">↓</span></span><span class="block font-semibold tabular-nums text-foreground">140</span>',
     );
     const calculatedStatLabels = [
       ...markup.matchAll(
-        /data-stat="([^"]+)"[^>]*><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-[^"]+"><\/span><span class="block min-w-0 max-w-full break-words">([^<]+)<\/span><\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/span>/g,
+        /data-stat="([^"]+)"[^>]*><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-[^"]+"><\/span><span class="block min-w-0 max-w-full break-words">([^<]+)<\/span>(?:<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none [^"]+">[↑↓]<\/span>)?<\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/span>/g,
       ),
     ].map(([, stat, label, value]) => ({ stat, label, value }));
     const expectedEvStatOrder = [
@@ -150,7 +154,7 @@ describe("PokemonDetails", () => {
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Verdediging");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-yellow-500"></span><span class="block min-w-0 max-w-full break-words">Verdediging</span></span><span class="block font-semibold tabular-nums text-foreground">284</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-yellow-500"></span><span class="block min-w-0 max-w-full break-words">Verdediging</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span></span><span class="block font-semibold tabular-nums text-foreground">284</span>',
     );
     expect(markup).toContain(
       '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-green-500"></span><span class="block min-w-0 max-w-full break-words">Speciale verdediging</span></span><span class="block font-semibold tabular-nums">197</span>',

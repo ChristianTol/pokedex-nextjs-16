@@ -222,7 +222,7 @@ export function EvRadarChart({
               key={stat.stat}
               data-stat={stat.stat}
               data-nature-effect={effect ?? undefined}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight${effect === "up" ? " font-semibold text-red-600 dark:text-red-400" : effect === "down" ? " font-semibold text-blue-700 dark:text-blue-400" : ""}`}
+              className="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight"
               style={{
                 left: `${position.left}%`,
                 top: `${position.top}%`,
@@ -237,6 +237,14 @@ export function EvRadarChart({
                 <span className="block min-w-0 max-w-full break-words">
                   {stat.label}
                 </span>
+                {effect && (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute left-full top-0 ml-1 font-bold leading-none ${effect === "up" ? "text-red-600 dark:text-red-400" : "text-blue-700 dark:text-blue-400"}`}
+                  >
+                    {effect === "up" ? "↑" : "↓"}
+                  </span>
+                )}
               </span>
               <span className={`block font-semibold tabular-nums${effect ? " text-foreground" : ""}`}>
                 {stat.displayValue ?? stat.value}
