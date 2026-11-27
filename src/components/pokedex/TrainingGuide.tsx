@@ -170,11 +170,17 @@ function BuildCard({
             <EvRadarChart
               increasedStat={advice.increasedStat}
               decreasedStat={advice.decreasedStat}
+              maxValue={
+                showCalculatedStats && calculatedStats
+                  ? Math.max(1, ...EV_STAT_ORDER.map((s) => calculatedStats[s] ?? 0))
+                  : undefined
+              }
               stats={EV_STAT_ORDER.map((stat) => ({
                 stat,
                 label: statLabel(stat),
-                value:
-                  advice.evs.find((ev) => ev.stat === stat)?.value ?? 0,
+                value: showCalculatedStats
+                  ? (calculatedStats?.[stat] ?? 0)
+                  : (advice.evs.find((ev) => ev.stat === stat)?.value ?? 0),
                 displayValue: showCalculatedStats
                   ? (calculatedStats?.[stat] ?? t("detail.unavailableStat"))
                   : undefined,
