@@ -53,7 +53,10 @@ export type TrainingAdvice = {
   evs: { stat: string; value: number }[];
 };
 
-export type CalculatedLevel100Stats = Record<string, number | null>;
+export type CalculatedTrainingStats = Record<string, number | null>;
+
+/** @deprecated Use CalculatedTrainingStats for values at any level. */
+export type CalculatedLevel100Stats = CalculatedTrainingStats;
 
 const GAMES_WITHOUT_TRADITIONAL_EVS = new Set([
   "lets-go-pikachu-lets-go-eevee",
@@ -77,15 +80,19 @@ function isValidStat(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value) && value >= 0;
 }
 
-/** Calculates level-100 stats with 31 IVs and the supplied EVs and nature. */
-export function level100StatsForTrainingAdvice(
+/** Calculates stats at a given level with 31 IVs and the supplied EVs and nature. */
+export function trainingStatsForAdviceAtLevel(
   baseStats: PokemonStat[],
   advice: TrainingAdvice,
-): CalculatedLevel100Stats {
+  level: number,
+): CalculatedTrainingStats {
   return Object.fromEntries(
     baseStats.map(({ name, value: baseStat }) => {
       const ev = advice.evs.find((entry) => entry.stat === name)?.value ?? 0;
       if (
+        !Number.isInteger(level) ||
+        level < 1 ||
+        level > 100 ||
         !isValidStat(baseStat) ||
         !Number.isInteger(ev) ||
         ev < 0 ||
@@ -97,8 +104,10 @@ export function level100StatsForTrainingAdvice(
       if (name === "hp" && baseStat === 1) return [name, 1];
 
       const pointsFromEffort = Math.floor(ev / 4);
-      const baseValue = 2 * baseStat + 31 + pointsFromEffort;
-      if (name === "hp") return [name, baseValue + 110];
+      const baseValue = Math.floor(
+        ((2 * baseStat + 31 + pointsFromEffort) * level) / 100,
+      );
+      if (name === "hp") return [name, baseValue + level + 10];
 
       const natureModifier =
         name === advice.increasedStat
@@ -109,6 +118,14 @@ export function level100StatsForTrainingAdvice(
       return [name, Math.floor((baseValue + 5) * natureModifier)];
     }),
   );
+}
+
+/** Calculates level-100 stats with 31 IVs and the supplied EVs and nature. */
+export function level100StatsForTrainingAdvice(
+  baseStats: PokemonStat[],
+  advice: TrainingAdvice,
+): CalculatedLevel100Stats {
+  return trainingStatsForAdviceAtLevel(baseStats, advice, 100);
 }
 
 /**

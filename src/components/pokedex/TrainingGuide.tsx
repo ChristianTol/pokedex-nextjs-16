@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent, type PointerEvent } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
 import { pickText } from "@/lib/i18n/languages";
@@ -7,10 +7,10 @@ import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import { formatName } from "@/lib/pokedex/format";
 import {
   defensiveTrainingAdviceForStats,
-  level100StatsForTrainingAdvice,
   natureStatEffect,
   RADAR_CHART_STAT_CEILING,
   trainingAdviceForStats,
+  trainingStatsForAdviceAtLevel,
   TRAINING_NATURES,
   type TrainingAdvice,
   type TrainingNature,
@@ -113,6 +113,7 @@ function BuildCard({
   game,
   kind,
   showCalculatedStats,
+  level,
 }: {
   title: string;
   icon: string;
@@ -122,6 +123,7 @@ function BuildCard({
   game: string | null;
   kind: TrainingBuildKind;
   showCalculatedStats: boolean;
+  level: number;
 }) {
   const { t } = useLanguage();
   const statLabel = (name: string) => {
@@ -138,7 +140,7 @@ function BuildCard({
       ? { ...recommended, nature, ...natureStatEffect(nature) }
       : null;
   const calculatedStats = advice
-    ? level100StatsForTrainingAdvice(detail.stats, advice)
+    ? trainingStatsForAdviceAtLevel(detail.stats, advice, level)
     : null;
 
   return (
@@ -194,7 +196,9 @@ function BuildCard({
           </div>
           <div>
             <p className="mb-2 font-medium">
-              {t(showCalculatedStats ? "detail.level100Stats" : "detail.evs")}
+              {showCalculatedStats
+                ? t("detail.level100Stats").replace("{level}", String(level))
+                : t("detail.evs")}
             </p>
             <EvRadarChart
               increasedStat={advice.increasedStat}
@@ -233,6 +237,66 @@ function BuildCard({
   );
 }
 
+const TRAINING_LEVEL_STOPS = [20, 40, 60, 80] as const;
+
+export function TrainingLevelStops({
+  level,
+  onSelectLevel,
+  levelLabel,
+}: {
+  level: number;
+  onSelectLevel: (level: number) => void;
+  levelLabel: string;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10">
+      {TRAINING_LEVEL_STOPS.map((stop) => (
+        <button
+          key={stop}
+          type="button"
+          aria-label={`${levelLabel} ${stop}`}
+          aria-pressed={level === stop}
+          title={`${levelLabel} ${stop}`}
+          onPointerDown={(event: PointerEvent<HTMLButtonElement>) => {
+            if (event.button !== 0) return;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            onSelectLevel(stop);
+          }}
+          onPointerMove={(event: PointerEvent<HTMLButtonElement>) => {
+            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+
+            const bounds = event.currentTarget.parentElement?.getBoundingClientRect();
+            if (!bounds) return;
+
+            const rangeWidth = Math.max(1, bounds.width - 16);
+            const position = Math.min(
+              1,
+              Math.max(0, (event.clientX - bounds.left - 8) / rangeWidth),
+            );
+            onSelectLevel(Math.round(1 + position * 99));
+          }}
+          onClick={(event: MouseEvent<HTMLButtonElement>) => {
+            if (event.detail === 0) onSelectLevel(stop);
+          }}
+          style={{
+            left: `calc(${((stop - 1) / 99) * 100}% + ${8 - ((stop - 1) / 99) * 16}px)`,
+          }}
+          className="group pointer-events-auto absolute top-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#047857] dark:focus-visible:outline-[#6ee7b7]"
+        >
+          <span
+            aria-hidden="true"
+            className={`rounded-full transition-transform group-hover:scale-125 group-focus-visible:scale-125 ${
+              level === stop
+                ? "size-3 border-2 border-[#047857] bg-[#047857] dark:border-[#6ee7b7] dark:bg-[#6ee7b7]"
+                : "size-2 bg-border"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Example nature, EV spread and moves for an offensive and a defensive build. */
 export function TrainingGuide({
   detail,
@@ -245,6 +309,7 @@ export function TrainingGuide({
 }) {
   const { t } = useLanguage();
   const [valueMode, setValueMode] = useState<TrainingValueMode>("stats");
+  const [level, setLevel] = useState(100);
   const showCalculatedStats = valueMode === "stats";
   const offensive = trainingAdviceForStats(detail.stats, game);
   const defensive = defensiveTrainingAdviceForStats(detail.stats, game);
@@ -256,7 +321,7 @@ export function TrainingGuide({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">{t("detail.trainingAdviceSummary")}</p>
-      <div className="flex flex-col items-start gap-2">
+      <div className="flex flex-col items-start gap-3">
         <button
           type="button"
           aria-pressed={showCalculatedStats}
@@ -271,9 +336,38 @@ export function TrainingGuide({
               : "detail.showLevel100Stats",
           )}
         </button>
-        <p className="text-xs text-muted">
-          {t("detail.level100StatAssumptions")}
-        </p>
+        {showCalculatedStats && (
+          <>
+            <label className="grid w-full max-w-xs gap-1 text-sm font-medium">
+              <span className="flex items-center justify-between">
+                <span>{t("detail.calculatedLevel")}</span>
+                <output aria-live="polite" className="tabular-nums">
+                  {level}
+                </output>
+              </span>
+              <span className="relative block h-10 w-full">
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={level}
+                  aria-label={t("detail.calculatedLevel")}
+                  onChange={(event) => setLevel(Number(event.currentTarget.value))}
+                  className="absolute inset-0 z-0 m-0 h-full w-full accent-[#047857] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#047857] dark:accent-[#6ee7b7] dark:focus-visible:outline-[#6ee7b7]"
+                />
+                <TrainingLevelStops
+                  level={level}
+                  onSelectLevel={setLevel}
+                  levelLabel={t("detail.calculatedLevel")}
+                />
+              </span>
+            </label>
+            <p className="text-xs text-muted">
+              {t("detail.level100StatAssumptions")}
+            </p>
+          </>
+        )}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <BuildCard
@@ -285,6 +379,7 @@ export function TrainingGuide({
           game={game}
           kind="offensive"
           showCalculatedStats={showCalculatedStats}
+          level={level}
         />
         <BuildCard
           title={t("detail.defensiveExample")}
@@ -295,6 +390,7 @@ export function TrainingGuide({
           game={game}
           kind="defensive"
           showCalculatedStats={showCalculatedStats}
+          level={level}
         />
       </div>
       <details className="text-xs text-muted">

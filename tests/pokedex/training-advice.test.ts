@@ -8,6 +8,7 @@ import {
   natureStatEffect,
   TRAINING_NATURES,
   trainingAdviceForStats,
+  trainingStatsForAdviceAtLevel,
 } from "@/lib/pokedex/training-advice";
 
 const stats = (
@@ -145,6 +146,46 @@ describe("level100StatsForTrainingAdvice", () => {
       ),
     ).toEqual({ hp: 1, attack: null });
     expect(level100StatsForTrainingAdvice([], advice!)).toEqual({});
+  });
+});
+
+describe("trainingStatsForAdviceAtLevel", () => {
+  const advice = trainingAdviceForStats(stats(130, 60, 100), "sword-shield");
+
+  it.each([
+    [1, { hp: 12, attack: 8, defense: 6, "special-attack": 5, "special-defense": 6, speed: 7 }],
+    [50, { hp: 156, attack: 182, defense: 100, "special-attack": 72, "special-defense": 100, speed: 167 }],
+    [100, { hp: 302, attack: 359, defense: 196, "special-attack": 140, "special-defense": 196, speed: 328 }],
+  ])("calculates nature- and EV-adjusted stats at level %i", (level, expected) => {
+    expect(advice).not.toBeNull();
+    expect(trainingStatsForAdviceAtLevel(stats(130, 60, 100), advice!, level)).toEqual(
+      expected,
+    );
+  });
+
+  it.each([0, 101, 1.5, Number.NaN])(
+    "marks stats unavailable for invalid level %s",
+    (level) => {
+      expect(advice).not.toBeNull();
+      expect(
+        trainingStatsForAdviceAtLevel(
+          [{ name: "hp", value: 80 }, { name: "attack", value: 130 }],
+          advice!,
+          level,
+        ),
+      ).toEqual({ hp: null, attack: null });
+    },
+  );
+
+  it("keeps Shedinja at one HP at every valid level", () => {
+    expect(advice).not.toBeNull();
+    expect(
+      trainingStatsForAdviceAtLevel(
+        [{ name: "hp", value: 1 }],
+        advice!,
+        50,
+      ),
+    ).toEqual({ hp: 1 });
   });
 });
 

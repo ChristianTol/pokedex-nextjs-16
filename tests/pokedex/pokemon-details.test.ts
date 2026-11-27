@@ -96,8 +96,12 @@ describe("PokemonDetails", () => {
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain("Toon EV-waarden");
     expect(markup.match(/Berekende stats \(level 100\)/g)).toHaveLength(2);
+    expect(markup.match(/type="range"/g)).toHaveLength(1);
+    expect(markup).toContain('aria-label="Level"');
+    expect(markup).toContain('value="100"');
+    expect(markup.match(/aria-label="Level (?:20|40|60|80)"/g)).toHaveLength(4);
     expect(markup).toContain(
-      "De berekening gaat uit van level 100 en 31 IV’s. De grafiekvorm blijft de EV-verdeling tonen.",
+      "Berekend met het gekozen level en 31 IV’s. De grafiekvorm blijft de EV-verdeling tonen.",
     );
     expect(markup).toContain("rounded-xl border border-border/50 p-4");
     expect(markup).toContain("Aanvallend voorbeeld");

@@ -47,6 +47,8 @@ describe("messages", () => {
       expect(translate(language, "detail.natureLowers")).toBeTruthy();
       expect(translate(language, "detail.evs")).toBeTruthy();
       expect(translate(language, "detail.level100Stats")).toBeTruthy();
+      expect(translate(language, "detail.level100Stats")).toContain("{level}");
+      expect(translate(language, "detail.calculatedLevel")).toBeTruthy();
       expect(translate(language, "detail.showLevel100Stats")).toBeTruthy();
       expect(translate(language, "detail.showEvValues")).toBeTruthy();
       expect(translate(language, "detail.level100StatAssumptions")).toBeTruthy();
