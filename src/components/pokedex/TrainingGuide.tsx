@@ -8,7 +8,10 @@ import { formatName } from "@/lib/pokedex/format";
 import {
   defensiveTrainingAdviceForStats,
   level100StatsForTrainingAdvice,
+  natureStatEffect,
+  RADAR_CHART_STAT_CEILING,
   trainingAdviceForStats,
+  TRAINING_NATURES,
   type TrainingAdvice,
   type TrainingNature,
 } from "@/lib/pokedex/training-advice";
@@ -29,16 +32,8 @@ const EV_STAT_ORDER = [
   "special-attack",
 ] as const;
 
-const TRAINING_NATURE_LABELS = {
-  adamant: "nature.adamant",
-  bold: "nature.bold",
-  calm: "nature.calm",
-  careful: "nature.careful",
-  impish: "nature.impish",
-  jolly: "nature.jolly",
-  modest: "nature.modest",
-  timid: "nature.timid",
-} as const satisfies Record<TrainingNature, MessageKey>;
+const natureLabelKey = (nature: TrainingNature) =>
+  `nature.${nature}` satisfies MessageKey;
 
 export type TrainingValueMode = "evs" | "stats";
 
@@ -112,7 +107,7 @@ function SuggestedMoves({
 function BuildCard({
   title,
   icon,
-  advice,
+  advice: recommended,
   detail,
   moves,
   game,
@@ -133,6 +128,15 @@ function BuildCard({
     const key = STAT_LABELS[name];
     return key ? t(key) : formatName(name);
   };
+  const [chosenNature, setChosenNature] = useState<TrainingNature | null>(
+    null,
+  );
+  // The recommended nature is the starting point; the picker overrides it.
+  const nature = chosenNature ?? recommended?.nature;
+  const advice: TrainingAdvice | null =
+    recommended && nature
+      ? { ...recommended, nature, ...natureStatEffect(nature) }
+      : null;
   const calculatedStats = advice
     ? level100StatsForTrainingAdvice(detail.stats, advice)
     : null;
@@ -149,18 +153,43 @@ function BuildCard({
             <p className="text-xs font-medium text-muted">
               {t("detail.recommendedNature")}
             </p>
-            <p className="text-xl font-bold tracking-tight">
-              {t(TRAINING_NATURE_LABELS[advice.nature])}
-            </p>
+            <select
+              aria-label={t("detail.chooseNature")}
+              value={advice.nature}
+              onChange={(event) =>
+                setChosenNature(event.target.value as TrainingNature)
+              }
+              className="mt-1 max-w-full rounded-lg border border-border/50 bg-surface-muted px-2 py-1 text-xl font-bold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {TRAINING_NATURES.map((option) => {
+                const effect = natureStatEffect(option);
+                return (
+                  <option key={option} value={option}>
+                    {t(natureLabelKey(option))}
+                    {effect.increasedStat
+                      ? ` (↑ ${statLabel(effect.increasedStat)}, ↓ ${statLabel(effect.decreasedStat)})`
+                      : ""}
+                  </option>
+                );
+              })}
+            </select>
             <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
-              <span>
-                <span aria-hidden="true">↑</span> {t("detail.natureRaises")}{" "}
-                {statLabel(advice.increasedStat)}
-              </span>
-              <span>
-                <span aria-hidden="true">↓</span> {t("detail.natureLowers")}{" "}
-                {statLabel(advice.decreasedStat)}
-              </span>
+              {advice.increasedStat ? (
+                <>
+                  <span>
+                    <span aria-hidden="true">↑</span>{" "}
+                    {t("detail.natureRaises")}{" "}
+                    {statLabel(advice.increasedStat)}
+                  </span>
+                  <span>
+                    <span aria-hidden="true">↓</span>{" "}
+                    {t("detail.natureLowers")}{" "}
+                    {statLabel(advice.decreasedStat)}
+                  </span>
+                </>
+              ) : (
+                <span>{t("detail.natureNeutral")}</span>
+              )}
             </p>
           </div>
           <div>
@@ -170,17 +199,15 @@ function BuildCard({
             <EvRadarChart
               increasedStat={advice.increasedStat}
               decreasedStat={advice.decreasedStat}
-              maxValue={
-                showCalculatedStats && calculatedStats
-                  ? Math.max(1, ...EV_STAT_ORDER.map((s) => calculatedStats[s] ?? 0))
-                  : undefined
-              }
               stats={EV_STAT_ORDER.map((stat) => ({
                 stat,
                 label: statLabel(stat),
                 value: showCalculatedStats
                   ? (calculatedStats?.[stat] ?? 0)
                   : (advice.evs.find((ev) => ev.stat === stat)?.value ?? 0),
+                maxValue: showCalculatedStats
+                  ? RADAR_CHART_STAT_CEILING
+                  : undefined,
                 displayValue: showCalculatedStats
                   ? (calculatedStats?.[stat] ?? t("detail.unavailableStat"))
                   : undefined,
@@ -191,7 +218,7 @@ function BuildCard({
           <div>
             <p className="mb-2 font-medium">{t("detail.suggestedMoves")}</p>
             <SuggestedMoves
-              advice={advice}
+              advice={recommended ?? advice}
               detail={detail}
               moves={moves}
               game={game}

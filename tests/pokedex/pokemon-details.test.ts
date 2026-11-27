@@ -101,7 +101,7 @@ describe("PokemonDetails", () => {
     );
     expect(markup).toContain("rounded-xl border border-border/50 p-4");
     expect(markup).toContain("Aanvallend voorbeeld");
-    expect(markup).toContain('tracking-tight">Jolly</p>');
+    expect(markup).toMatch(/<option value="jolly" selected="">Jolly/);
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Snelheid");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
@@ -150,7 +150,7 @@ describe("PokemonDetails", () => {
     expect(calculatedStatLabels).toHaveLength(12);
     expect(markup).not.toContain("grid w-full grid-cols-2 gap-x-3 gap-y-1.5");
     expect(markup).toContain("Verdedigend voorbeeld");
-    expect(markup).toContain('tracking-tight">Impish</p>');
+    expect(markup).toMatch(/<option value="impish" selected="">Impish/);
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Verdediging");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
@@ -280,7 +280,7 @@ describe("PokemonDetails", () => {
     const markup = render(detail, "sword-shield");
 
     expect(markup).toContain("Aanvallend voorbeeld");
-    expect(markup).toContain('tracking-tight">Jolly</p>');
+    expect(markup).toMatch(/<option value="jolly" selected="">Jolly/);
     expect(markup).toContain("Verdedigend voorbeeld");
     expect(markup).toContain("Geen toepasbare nature- of EV-richtlijn beschikbaar.");
   });

@@ -5,6 +5,8 @@ type EvRadarStat = {
   label: string;
   value: number;
   displayValue?: string | number;
+  /** Value that reaches the outer ring of this axis; defaults to the EV maximum. */
+  maxValue?: number;
   color: string;
 };
 
@@ -59,19 +61,17 @@ export function EvRadarChart({
   stats,
   increasedStat,
   decreasedStat,
-  maxValue = MAX_EV_PER_STAT,
 }: {
   stats: EvRadarStat[];
   increasedStat?: string;
   decreasedStat?: string;
-  /** Value that reaches the outer ring; defaults to the EV maximum. */
-  maxValue?: number;
 }) {
   const clipId = `ev-radar-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const radii = Array.from({ length: STAT_COUNT }, (_, index) => {
     const stat = stats[index];
-    const value = Math.max(0, Math.min(maxValue, stat?.value ?? 0));
-    return (value / maxValue) * RADIUS;
+    const max = stat?.maxValue || MAX_EV_PER_STAT;
+    const value = Math.max(0, Math.min(max, stat?.value ?? 0));
+    return (value / max) * RADIUS;
   });
   const valuePoints = radii.map((radius, index) => point(index, radius));
 
@@ -141,7 +141,10 @@ export function EvRadarChart({
             const stat = stats[index];
             const radius = radii[index];
             if (!stat || radius === 0) return null;
-            const value = Math.max(0, Math.min(maxValue, stat.value));
+            const value = Math.max(
+              0,
+              Math.min(stat.maxValue || MAX_EV_PER_STAT, stat.value),
+            );
 
             return (
               <polygon

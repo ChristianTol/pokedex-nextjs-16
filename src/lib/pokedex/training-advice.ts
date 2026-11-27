@@ -1,15 +1,50 @@
 import type { PokemonStat } from "@/lib/pokeapi/detail";
 import { gameGeneration } from "./games";
 
-export type TrainingNature =
-  | "adamant"
-  | "bold"
-  | "calm"
-  | "careful"
-  | "impish"
-  | "jolly"
-  | "modest"
-  | "timid";
+/** Every nature with the stat it raises and lowers; neutral natures have neither. */
+const NATURE_EFFECTS = {
+  hardy: null,
+  lonely: ["attack", "defense"],
+  brave: ["attack", "speed"],
+  adamant: ["attack", "special-attack"],
+  naughty: ["attack", "special-defense"],
+  bold: ["defense", "attack"],
+  docile: null,
+  relaxed: ["defense", "speed"],
+  impish: ["defense", "special-attack"],
+  lax: ["defense", "special-defense"],
+  timid: ["speed", "attack"],
+  hasty: ["speed", "defense"],
+  serious: null,
+  jolly: ["speed", "special-attack"],
+  naive: ["speed", "special-defense"],
+  modest: ["special-attack", "attack"],
+  mild: ["special-attack", "defense"],
+  quiet: ["special-attack", "speed"],
+  bashful: null,
+  rash: ["special-attack", "special-defense"],
+  calm: ["special-defense", "attack"],
+  gentle: ["special-defense", "defense"],
+  sassy: ["special-defense", "speed"],
+  careful: ["special-defense", "special-attack"],
+  quirky: null,
+} as const;
+
+export type TrainingNature = keyof typeof NATURE_EFFECTS;
+
+export const TRAINING_NATURES = Object.keys(NATURE_EFFECTS) as TrainingNature[];
+
+/** Stats a nature raises and lowers; both empty for a neutral nature. */
+export function natureStatEffect(nature: TrainingNature): {
+  increasedStat: string;
+  decreasedStat: string;
+} {
+  const effect = NATURE_EFFECTS[nature];
+  return {
+    increasedStat: effect?.[0] ?? "",
+    decreasedStat: effect?.[1] ?? "",
+  };
+}
 
 export type TrainingAdvice = {
   nature: TrainingNature;
@@ -75,6 +110,13 @@ export function level100StatsForTrainingAdvice(
     }),
   );
 }
+
+/**
+ * Level-100 value that reaches the outer ring of the radar chart, for every
+ * stat alike. Higher values are clipped to the ring. Estimated from the
+ * in-game stat hexagon (Garchomp, Pokémon Moon), so treat it as approximate.
+ */
+export const RADAR_CHART_STAT_CEILING = 290;
 
 export function trainingAdviceForStats(
   stats: PokemonStat[],

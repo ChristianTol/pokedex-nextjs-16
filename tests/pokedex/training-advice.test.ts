@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { LANGUAGES } from "@/lib/i18n/languages";
+import { translate } from "@/lib/i18n/messages";
 import type { PokemonStat } from "@/lib/pokeapi/detail";
 import {
   defensiveTrainingAdviceForStats,
   level100StatsForTrainingAdvice,
+  natureStatEffect,
+  TRAINING_NATURES,
   trainingAdviceForStats,
 } from "@/lib/pokedex/training-advice";
 
@@ -271,4 +275,48 @@ describe("defensiveTrainingAdviceForStats", () => {
       expect(defensiveTrainingAdviceForStats(stats(100, 70, 50), game)).toBeNull();
     },
   );
+});
+describe("natures", () => {
+  it("lists all 25 natures, five of them neutral", () => {
+    expect(TRAINING_NATURES).toHaveLength(25);
+    const neutral = TRAINING_NATURES.filter(
+      (nature) => natureStatEffect(nature).increasedStat === "",
+    );
+    expect(neutral.sort()).toEqual([
+      "bashful",
+      "docile",
+      "hardy",
+      "quirky",
+      "serious",
+    ]);
+  });
+
+  it("raises and lowers the right stats", () => {
+    expect(natureStatEffect("jolly")).toEqual({
+      increasedStat: "speed",
+      decreasedStat: "special-attack",
+    });
+    expect(natureStatEffect("quiet")).toEqual({
+      increasedStat: "special-attack",
+      decreasedStat: "speed",
+    });
+  });
+
+  it("never raises and lowers the same stat, and never touches HP", () => {
+    for (const nature of TRAINING_NATURES) {
+      const { increasedStat, decreasedStat } = natureStatEffect(nature);
+      if (increasedStat === "") continue;
+      expect(increasedStat).not.toBe(decreasedStat);
+      expect(increasedStat).not.toBe("hp");
+      expect(decreasedStat).not.toBe("hp");
+    }
+  });
+
+  it("has a label in every language", () => {
+    for (const language of LANGUAGES) {
+      for (const nature of TRAINING_NATURES) {
+        expect(translate(language, `nature.${nature}`)).toBeTruthy();
+      }
+    }
+  });
 });
