@@ -116,7 +116,7 @@ export function level100StatsForTrainingAdvice(
  * stat alike. Higher values are clipped to the ring. Estimated from the
  * in-game stat hexagon (Garchomp, Pokémon Moon), so treat it as approximate.
  */
-export const RADAR_CHART_STAT_CEILING = 295;
+export const RADAR_CHART_STAT_CEILING = 305;
 
 export function trainingAdviceForStats(
   stats: PokemonStat[],
