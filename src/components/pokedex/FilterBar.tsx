@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -146,6 +146,17 @@ export function FilterBar({
   const { t, tOptional } = useLanguage();
   const [sheetOpen, setSheetOpen] = useState(false);
   const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const sheetCloseRequestRef = useRef(closeSheet);
+  const requestSheetClose = useCallback(
+    () => sheetCloseRequestRef.current(),
+    [],
+  );
+  const registerSheetCloseRequest = useCallback(
+    (requestClose: () => void) => {
+      sheetCloseRequestRef.current = requestClose;
+    },
+    [],
+  );
   const sortLabel = (option: SortOption) => {
     const byStat = statSortOf(option);
     if (!byStat) return t(`sort.${option as "id-asc"}`);
@@ -430,11 +441,12 @@ export function FilterBar({
         <FilterSheet
           title={t("filters.title")}
           onClose={closeSheet}
+          onRequestCloseReady={registerSheetCloseRequest}
           footer={
             <>
               <button
                 type="button"
-                onClick={closeSheet}
+                onClick={requestSheetClose}
                 className="rounded-lg border border-selected bg-selected px-4 py-2.5 text-sm font-medium text-selected-text focus-visible:outline-2 focus-visible:outline-selected"
               >
                 {t("filters.showResults").replace(

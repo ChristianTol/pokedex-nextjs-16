@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   TRAINING_STAT_EDITOR_BACKDROP_CLASS,
+  TRAINING_STAT_EDITOR_DIMMER_CLASS,
   TRAINING_STAT_EDITOR_MOBILE_QUERY,
   cancelTrainingModalScroll,
+  finishTrainingStatEditorClose,
   scrollTrainingModalTo,
   startTrainingStatEditorCloseAnimation,
+  startTrainingStatBackdropOpenAnimation,
   startTrainingStatEditorOpenAnimation,
   startTrainingStatSheetAnimation,
   trainingChartLayout,
@@ -17,7 +20,9 @@ describe("TrainingStatEditor backdrop", () => {
   it("keeps the chart visible behind the mobile sheet and desktop dialog", () => {
     expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).toContain("fixed inset-0");
     expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).toContain("z-[60]");
-    expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).toContain("bg-black/20");
+    expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).not.toContain("bg-black/20");
+    expect(TRAINING_STAT_EDITOR_DIMMER_CLASS).toContain("bg-black/20");
+    expect(TRAINING_STAT_EDITOR_DIMMER_CLASS).toContain("pointer-events-none");
     expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).not.toContain("backdrop-blur");
     expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).toContain("items-end");
     expect(TRAINING_STAT_EDITOR_BACKDROP_CLASS).toContain("md:items-center");
@@ -106,20 +111,99 @@ describe("TrainingStatEditor backdrop", () => {
     expect(animate).not.toHaveBeenCalled();
   });
 
-  it("animates the desktop editor and backdrop after positioning", () => {
+  it("fades the separate backdrop in immediately on both viewport sizes", () => {
+    const cancel = vi.fn();
+    const animate = vi.fn(() => ({ cancel }) as unknown as Animation);
+
+    const cleanup = startTrainingStatBackdropOpenAnimation({ animate }, false);
+    expect(animate).toHaveBeenCalledWith(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 220, easing: "ease-out" },
+    );
+    cleanup?.();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(startTrainingStatBackdropOpenAnimation({ animate }, true)).toBeNull();
+    expect(animate).toHaveBeenCalledOnce();
+  });
+
+  it("continues closing from the current backdrop and panel animation values", () => {
+    const animation = {
+      finished: Promise.resolve(),
+      cancel: vi.fn(),
+    } as unknown as Animation;
+    const panelAnimate = vi.fn(() => animation);
+    const backdropAnimate = vi.fn(() => animation);
+
+    startTrainingStatEditorCloseAnimation(
+      { animate: panelAnimate },
+      { animate: backdropAnimate },
+      false,
+      false,
+      {
+        panelOpacity: "0.4",
+        panelTransform: "matrix(0.98, 0, 0, 0.98, 0, 0)",
+        backdropOpacity: "0.5",
+      },
+    );
+
+    expect(panelAnimate).toHaveBeenCalledWith(
+      [
+        { opacity: "0.4", transform: "matrix(0.98, 0, 0, 0.98, 0, 0)" },
+        { opacity: 0, transform: "scale(0.96)" },
+      ],
+      { duration: 160, easing: "ease-in", fill: "forwards" },
+    );
+    expect(backdropAnimate).toHaveBeenCalledWith(
+      [{ opacity: "0.5" }, { opacity: 0 }],
+      { duration: 160, easing: "ease-in", fill: "forwards" },
+    );
+  });
+
+  it("continues a mobile close from the partially opened sheet and dimmer", () => {
+    const animation = {
+      finished: Promise.resolve(),
+      cancel: vi.fn(),
+    } as unknown as Animation;
+    const panelAnimate = vi.fn(() => animation);
+    const backdropAnimate = vi.fn(() => animation);
+
+    startTrainingStatEditorCloseAnimation(
+      { animate: panelAnimate },
+      { animate: backdropAnimate },
+      true,
+      false,
+      {
+        panelOpacity: "1",
+        panelTransform: "matrix(1, 0, 0, 1, 0, 100)",
+        backdropOpacity: "0.2",
+      },
+    );
+
+    expect(panelAnimate).toHaveBeenCalledWith(
+      [
+        { transform: "matrix(1, 0, 0, 1, 0, 100)" },
+        { transform: "translateY(100%)" },
+      ],
+      {
+        duration: 220,
+        easing: "cubic-bezier(0.4, 0, 1, 1)",
+        fill: "forwards",
+      },
+    );
+    expect(backdropAnimate).toHaveBeenCalledWith(
+      [{ opacity: "0.2" }, { opacity: 0 }],
+      { duration: 220, easing: "ease-in", fill: "forwards" },
+    );
+  });
+
+  it("animates only the desktop editor after positioning", () => {
     const panelAnimation = {
       finished: Promise.resolve(),
       cancel: vi.fn(),
     } as unknown as Animation;
-    const backdropAnimation = {
-      finished: Promise.resolve(),
-      cancel: vi.fn(),
-    } as unknown as Animation;
     const panelAnimate = vi.fn(() => panelAnimation);
-    const backdropAnimate = vi.fn(() => backdropAnimation);
     const cleanup = startTrainingStatEditorOpenAnimation(
       { animate: panelAnimate },
-      { animate: backdropAnimate },
       false,
     );
 
@@ -130,18 +214,12 @@ describe("TrainingStatEditor backdrop", () => {
       ],
       { duration: 180, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
     );
-    expect(backdropAnimate).toHaveBeenCalledWith(
-      [{ opacity: 0 }, { opacity: 1 }],
-      { duration: 180, easing: "ease-out" },
-    );
     cleanup?.();
     expect(panelAnimation.cancel).toHaveBeenCalledOnce();
-    expect(backdropAnimation.cancel).toHaveBeenCalledOnce();
 
     expect(
       startTrainingStatEditorOpenAnimation(
         { animate: panelAnimate },
-        { animate: backdropAnimate },
         true,
       ),
     ).toBeNull();
@@ -168,13 +246,29 @@ describe("TrainingStatEditor backdrop", () => {
 
     expect(panelAnimate).toHaveBeenCalledWith(
       [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
-      { duration: 220, easing: "cubic-bezier(0.4, 0, 1, 1)" },
+      {
+        duration: 220,
+        easing: "cubic-bezier(0.4, 0, 1, 1)",
+        fill: "forwards",
+      },
     );
     expect(backdropAnimate).toHaveBeenCalledWith(
       [{ opacity: 1 }, { opacity: 0 }],
-      { duration: 220, easing: "ease-in" },
+      { duration: 220, easing: "ease-in", fill: "forwards" },
     );
     await closing?.finished;
+  });
+
+  it("hides the complete overlay before invoking the close callback", () => {
+    const backdrop = { style: { visibility: "visible" } };
+    const onClose = vi.fn(() => {
+      expect(backdrop.style.visibility).toBe("hidden");
+    });
+
+    finishTrainingStatEditorClose(backdrop, onClose);
+
+    expect(backdrop.style.visibility).toBe("hidden");
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("fades and scales the desktop editor out and skips closing motion for reduced motion", async () => {
@@ -200,11 +294,11 @@ describe("TrainingStatEditor backdrop", () => {
         { opacity: 1, transform: "scale(1)" },
         { opacity: 0, transform: "scale(0.96)" },
       ],
-      { duration: 160, easing: "ease-in" },
+      { duration: 160, easing: "ease-in", fill: "forwards" },
     );
     expect(backdropAnimate).toHaveBeenCalledWith(
       [{ opacity: 1 }, { opacity: 0 }],
-      { duration: 160, easing: "ease-in" },
+      { duration: 160, easing: "ease-in", fill: "forwards" },
     );
     await closing?.finished;
 
@@ -283,5 +377,53 @@ describe("TrainingStatEditor backdrop", () => {
     expect(position.width).toBe(368);
     expect(position.left + position.width).toBeLessThanOrEqual(384);
     expect(position.maxHeight).toBe(696);
+  });
+
+  it("keeps the editor on its selected side when chart geometry changes", () => {
+    const initialPosition = trainingDesktopEditorPosition({
+      modalLeft: 0,
+      modalRight: 1200,
+      visibleTop: 40,
+      visibleBottom: 760,
+      chartLeft: 250,
+      chartRight: 520,
+      chartTop: 260,
+      chartHeight: 280,
+      panelWidth: 400,
+      panelHeight: 500,
+      viewportWidth: 1200,
+    });
+    const nextPosition = trainingDesktopEditorPosition({
+      modalLeft: 0,
+      modalRight: 1200,
+      visibleTop: 40,
+      visibleBottom: 760,
+      chartLeft: 420,
+      chartRight: 800,
+      chartTop: 220,
+      chartHeight: 240,
+      panelWidth: 400,
+      panelHeight: 500,
+      viewportWidth: 1200,
+      placement: initialPosition.placement,
+    });
+    const naturalNextPosition = trainingDesktopEditorPosition({
+      modalLeft: 0,
+      modalRight: 1200,
+      visibleTop: 40,
+      visibleBottom: 760,
+      chartLeft: 420,
+      chartRight: 800,
+      chartTop: 220,
+      chartHeight: 240,
+      panelWidth: 400,
+      panelHeight: 500,
+      viewportWidth: 1200,
+    });
+
+    expect(initialPosition.placement).toBe("right");
+    expect(naturalNextPosition.placement).toBe("left");
+    expect(nextPosition.placement).toBe("right");
+    expect(nextPosition.left).toBeGreaterThanOrEqual(816);
   });
 });
