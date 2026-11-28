@@ -61,10 +61,14 @@ export function EvRadarChart({
   stats,
   increasedStat,
   decreasedStat,
+  onSelectStat,
+  editStatLabel,
 }: {
   stats: EvRadarStat[];
   increasedStat?: string;
   decreasedStat?: string;
+  onSelectStat?: (stat: string, opener: HTMLButtonElement) => void;
+  editStatLabel?: string;
 }) {
   const clipId = `ev-radar-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const radii = Array.from({ length: STAT_COUNT }, (_, index) => {
@@ -223,18 +227,8 @@ export function EvRadarChart({
                 ? "down"
                 : null;
 
-          return (
-            <span
-              key={stat.stat}
-              data-stat={stat.stat}
-              data-nature-effect={effect ?? undefined}
-              className="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight"
-              style={{
-                left: `${position.left}%`,
-                top: `${position.top}%`,
-                width: `${position.width}%`,
-              }}
-            >
+          const label = (
+            <>
               <span className="relative mx-auto block w-fit max-w-full">
                 <span
                   aria-hidden="true"
@@ -255,6 +249,37 @@ export function EvRadarChart({
               <span className={`block font-semibold tabular-nums${effect ? " text-foreground" : ""}`}>
                 {stat.displayValue ?? stat.value}
               </span>
+            </>
+          );
+          const className = `absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight${onSelectStat ? " cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" : ""}`;
+          const style = {
+            left: `${position.left}%`,
+            top: `${position.top}%`,
+            width: `${position.width}%`,
+          };
+
+          return onSelectStat ? (
+            <button
+              key={stat.stat}
+              type="button"
+              data-stat={stat.stat}
+              data-nature-effect={effect ?? undefined}
+              aria-label={`${editStatLabel ?? "Edit"}: ${stat.label}`}
+              onClick={(event) => onSelectStat(stat.stat, event.currentTarget)}
+              className={className}
+              style={style}
+            >
+              {label}
+            </button>
+          ) : (
+            <span
+              key={stat.stat}
+              data-stat={stat.stat}
+              data-nature-effect={effect ?? undefined}
+              className={className}
+              style={style}
+            >
+              {label}
             </span>
           );
         })}

@@ -4,6 +4,39 @@ import { describe, expect, it } from "vitest";
 import { EvRadarChart } from "@/components/pokedex/EvRadarChart";
 
 describe("EvRadarChart", () => {
+  it("renders accessible stat buttons when an editor callback is supplied", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EvRadarChart, {
+        editStatLabel: "Edit IVs and EVs",
+        onSelectStat: () => {},
+        stats: [
+          { stat: "hp", label: "HP", value: 4, color: "bg-red-500" },
+          { stat: "attack", label: "Attack", value: 252, color: "bg-orange-500" },
+          { stat: "defense", label: "Defense", value: 0, color: "bg-yellow-500" },
+          { stat: "speed", label: "Speed", value: 252, color: "bg-pink-500" },
+          {
+            stat: "special-defense",
+            label: "Special Defense",
+            value: 0,
+            color: "bg-green-500",
+          },
+          {
+            stat: "special-attack",
+            label: "Special Attack",
+            value: 0,
+            color: "bg-blue-500",
+          },
+        ],
+      }),
+    );
+
+    expect(markup.match(/type="button" data-stat="/g)).toHaveLength(6);
+    expect(markup).toContain('aria-label="Edit IVs and EVs: HP"');
+    expect(markup).toContain('data-stat="special-attack"');
+    expect(markup).toContain("Special Attack</span></span>");
+    expect(markup).toContain(">0</span></button>");
+  });
+
   it("renders all six stats in the expected radar order with exact values", () => {
     const markup = renderToStaticMarkup(
       createElement(EvRadarChart, {

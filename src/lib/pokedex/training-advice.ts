@@ -70,7 +70,70 @@ function hasTraditionalEvTraining(game: string | null): game is string {
   return Number.isFinite(generation) && generation >= 3;
 }
 
-const MAX_EV_PER_STAT = 252;
+export const MAX_EV_PER_STAT = 252;
+export const MAX_TOTAL_EVS = 510;
+
+export const TRAINING_STAT_ORDER = [
+  "hp",
+  "attack",
+  "defense",
+  "speed",
+  "special-defense",
+  "special-attack",
+] as const;
+
+export type TrainingStatValues = Record<string, number>;
+
+export function trainingEvsFromAdvice(advice: TrainingAdvice): TrainingStatValues {
+  return Object.fromEntries(
+    TRAINING_STAT_ORDER.map((stat) => [
+      stat,
+      advice.evs.find((entry) => entry.stat === stat)?.value ?? 0,
+    ]),
+  );
+}
+
+export function totalTrainingEvs(evs: TrainingStatValues): number {
+  return Object.values(evs).reduce(
+    (total, value) => total + (Number.isInteger(value) && value > 0 ? value : 0),
+    0,
+  );
+}
+
+export function maxTrainingEvForStat(
+  evs: TrainingStatValues,
+  stat: string,
+): number {
+  const rawCurrent = evs[stat] ?? 0;
+  const current = Math.max(
+    0,
+    Math.min(
+      MAX_EV_PER_STAT,
+      Number.isFinite(rawCurrent) ? Math.floor(rawCurrent) : 0,
+    ),
+  );
+  const remaining = Math.max(0, MAX_TOTAL_EVS - totalTrainingEvs(evs));
+  return Math.min(MAX_EV_PER_STAT, current + remaining);
+}
+
+export function trainingEvsWithStatValue(
+  evs: TrainingStatValues,
+  stat: string,
+  value: number,
+): TrainingStatValues {
+  const rawCurrent = evs[stat] ?? 0;
+  const current = Math.max(
+    0,
+    Number.isFinite(rawCurrent) ? Math.floor(rawCurrent) : 0,
+  );
+  const max = maxTrainingEvForStat(evs, stat);
+  return {
+    ...evs,
+    [stat]: Number.isFinite(value)
+      ? Math.round(Math.max(0, Math.min(max, value)))
+      : current,
+  };
+}
 
 function statValue(stats: PokemonStat[], name: string): number | undefined {
   return stats.find((stat) => stat.name === name)?.value;
@@ -80,20 +143,25 @@ function isValidStat(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value) && value >= 0;
 }
 
-/** Calculates stats at a given level with 31 IVs and the supplied EVs and nature. */
+/** Calculates stats at a given level with the supplied IVs, EVs, and nature. */
 export function trainingStatsForAdviceAtLevel(
   baseStats: PokemonStat[],
   advice: TrainingAdvice,
   level: number,
+  ivs: TrainingStatValues = {},
 ): CalculatedTrainingStats {
   return Object.fromEntries(
     baseStats.map(({ name, value: baseStat }) => {
       const ev = advice.evs.find((entry) => entry.stat === name)?.value ?? 0;
+      const iv = ivs[name] ?? 31;
       if (
         !Number.isInteger(level) ||
         level < 1 ||
         level > 100 ||
         !isValidStat(baseStat) ||
+        !Number.isInteger(iv) ||
+        iv < 0 ||
+        iv > 31 ||
         !Number.isInteger(ev) ||
         ev < 0 ||
         ev > MAX_EV_PER_STAT
@@ -105,7 +173,7 @@ export function trainingStatsForAdviceAtLevel(
 
       const pointsFromEffort = Math.floor(ev / 4);
       const baseValue = Math.floor(
-        ((2 * baseStat + 31 + pointsFromEffort) * level) / 100,
+        ((2 * baseStat + iv + pointsFromEffort) * level) / 100,
       );
       if (name === "hp") return [name, baseValue + level + 10];
 
@@ -124,8 +192,9 @@ export function trainingStatsForAdviceAtLevel(
 export function level100StatsForTrainingAdvice(
   baseStats: PokemonStat[],
   advice: TrainingAdvice,
+  ivs: TrainingStatValues = {},
 ): CalculatedLevel100Stats {
-  return trainingStatsForAdviceAtLevel(baseStats, advice, 100);
+  return trainingStatsForAdviceAtLevel(baseStats, advice, 100, ivs);
 }
 
 /**

@@ -5,10 +5,14 @@ import type { PokemonStat } from "@/lib/pokeapi/detail";
 import {
   defensiveTrainingAdviceForStats,
   level100StatsForTrainingAdvice,
+  maxTrainingEvForStat,
   natureStatEffect,
   TRAINING_NATURES,
+  trainingEvsFromAdvice,
+  trainingEvsWithStatValue,
   trainingAdviceForStats,
   trainingStatsForAdviceAtLevel,
+  totalTrainingEvs,
 } from "@/lib/pokedex/training-advice";
 
 const stats = (
@@ -186,6 +190,88 @@ describe("trainingStatsForAdviceAtLevel", () => {
         50,
       ),
     ).toEqual({ hp: 1 });
+  });
+
+  it("calculates stats with custom IVs and treats invalid IVs as unavailable", () => {
+    expect(advice).not.toBeNull();
+    const baseStats = stats(130, 60, 100);
+    expect(
+      trainingStatsForAdviceAtLevel(baseStats, advice!, 100, {
+        hp: 0,
+        attack: 31,
+      }),
+    ).toMatchObject({ hp: 271, attack: 359 });
+    expect(
+      trainingStatsForAdviceAtLevel(baseStats, advice!, 100, {
+        attack: 32,
+      }).attack,
+    ).toBeNull();
+  });
+
+  it("keeps custom IVs on Shedinja and uses the fixed one HP", () => {
+    const shedinja = defensiveTrainingAdviceForStats(
+      stats(100, 70, 50).map((stat) =>
+        stat.name === "hp" ? { ...stat, value: 1 } : stat,
+      ),
+      "sword-shield",
+    );
+    expect(shedinja).not.toBeNull();
+    expect(
+      trainingStatsForAdviceAtLevel(
+        [{ name: "hp", value: 1 }, { name: "attack", value: 100 }],
+        shedinja!,
+        50,
+        { hp: 0, attack: 0 },
+      ),
+    ).toEqual({ hp: 1, attack: 105 });
+  });
+});
+
+describe("training EV editor limits", () => {
+  it("converts an advice spread to all six stats and resets to that recommendation", () => {
+    const recommended = trainingAdviceForStats(stats(130, 60, 100), "sword-shield");
+    expect(recommended).not.toBeNull();
+    const evs = trainingEvsFromAdvice(recommended!);
+    expect(evs).toEqual({
+      hp: 4,
+      attack: 252,
+      defense: 0,
+      speed: 252,
+      "special-defense": 0,
+      "special-attack": 0,
+    });
+    expect(totalTrainingEvs(evs)).toBe(508);
+  });
+
+  it("limits each stat to 252 and the complete spread to 510", () => {
+    const evs = {
+      hp: 0,
+      attack: 252,
+      defense: 0,
+      speed: 252,
+      "special-defense": 4,
+      "special-attack": 0,
+    };
+    expect(maxTrainingEvForStat(evs, "hp")).toBe(2);
+    expect(trainingEvsWithStatValue(evs, "hp", 252).hp).toBe(2);
+    expect(totalTrainingEvs(trainingEvsWithStatValue(evs, "hp", 2))).toBe(510);
+    expect(trainingEvsWithStatValue(evs, "hp", Number.NaN).hp).toBe(0);
+  });
+
+  it("frees EV points when lowering another stat and never exceeds stat caps", () => {
+    const full = {
+      hp: 252,
+      attack: 252,
+      defense: 0,
+      speed: 6,
+      "special-defense": 0,
+      "special-attack": 0,
+    };
+    expect(maxTrainingEvForStat(full, "defense")).toBe(0);
+    const lowered = trainingEvsWithStatValue(full, "hp", 200);
+    expect(maxTrainingEvForStat(lowered, "defense")).toBe(52);
+    expect(trainingEvsWithStatValue(lowered, "defense", 252).defense).toBe(52);
+    expect(totalTrainingEvs(trainingEvsWithStatValue(lowered, "defense", 252))).toBe(510);
   });
 });
 

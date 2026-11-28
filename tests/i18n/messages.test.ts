@@ -46,12 +46,21 @@ describe("messages", () => {
       expect(translate(language, "detail.natureRaises")).toBeTruthy();
       expect(translate(language, "detail.natureLowers")).toBeTruthy();
       expect(translate(language, "detail.evs")).toBeTruthy();
+      expect(translate(language, "detail.editStat")).toBeTruthy();
+      expect(translate(language, "detail.adjustStat")).toContain("{stat}");
+      expect(translate(language, "detail.ivs")).toBeTruthy();
+      expect(translate(language, "detail.evLimits")).toBeTruthy();
+      expect(translate(language, "detail.remainingEvs")).toContain("{count}");
+      expect(translate(language, "detail.resetTraining")).toBeTruthy();
       expect(translate(language, "detail.level100Stats")).toBeTruthy();
       expect(translate(language, "detail.level100Stats")).toContain("{level}");
       expect(translate(language, "detail.calculatedLevel")).toBeTruthy();
       expect(translate(language, "detail.showLevel100Stats")).toBeTruthy();
       expect(translate(language, "detail.showEvValues")).toBeTruthy();
       expect(translate(language, "detail.level100StatAssumptions")).toBeTruthy();
+      expect(translate(language, "detail.level100StatAssumptions")).not.toContain(
+        "31",
+      );
       expect(translate(language, "detail.unavailableStat")).toBeTruthy();
       expect(translate(language, "detail.suggestedMoves")).toBeTruthy();
       expect(translate(language, "detail.suggestedMovesLoading")).toBeTruthy();

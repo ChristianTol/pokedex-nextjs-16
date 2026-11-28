@@ -1,7 +1,12 @@
-import { useState, type MouseEvent, type PointerEvent } from "react";
+import {
+  useCallback,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
-import { pickText } from "@/lib/i18n/languages";
+import { pickText, type Language } from "@/lib/i18n/languages";
 import type { MessageKey } from "@/lib/i18n/messages";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import { formatName } from "@/lib/pokedex/format";
@@ -11,29 +16,63 @@ import {
   RADAR_CHART_STAT_CEILING,
   trainingAdviceForStats,
   trainingStatsForAdviceAtLevel,
+  trainingEvsFromAdvice,
+  trainingEvsWithStatValue,
+  maxTrainingEvForStat,
+  totalTrainingEvs,
+  MAX_TOTAL_EVS,
+  TRAINING_STAT_ORDER,
   TRAINING_NATURES,
   type TrainingAdvice,
   type TrainingNature,
+  type TrainingStatValues,
 } from "@/lib/pokedex/training-advice";
 import {
   suggestedMovesForBuild,
   type TrainingBuildKind,
 } from "@/lib/pokedex/training-builds";
-import { STAT_COLORS, STAT_LABELS } from "./stat-style";
+import { STAT_ACCENT_COLORS, STAT_COLORS, STAT_LABELS } from "./stat-style";
 import { EvRadarChart } from "./EvRadarChart";
+import { TrainingStatEditor } from "./TrainingStatEditor";
 import { TypeIcon } from "./TypeIcon";
-
-const EV_STAT_ORDER = [
-  "hp",
-  "attack",
-  "defense",
-  "speed",
-  "special-defense",
-  "special-attack",
-] as const;
 
 const natureLabelKey = (nature: TrainingNature) =>
   `nature.${nature}` satisfies MessageKey;
+
+export function trainingNatureGroups(
+  kind: TrainingBuildKind,
+  language: Language,
+  t: (key: MessageKey) => string,
+) {
+  const statOrder =
+    kind === "offensive"
+      ? ["attack", "special-attack", "speed"]
+      : ["defense", "special-defense", "speed"];
+  const collator = new Intl.Collator(language, { sensitivity: "base" });
+  const sortByName = (natures: TrainingNature[]) =>
+    natures.sort((first, second) =>
+      collator.compare(t(natureLabelKey(first)), t(natureLabelKey(second))),
+    );
+
+  return [
+    ...statOrder.map((stat) => ({
+      stat,
+      natures: sortByName(
+        TRAINING_NATURES.filter(
+          (nature) => natureStatEffect(nature).increasedStat === stat,
+        ),
+      ),
+    })),
+    {
+      stat: "",
+      natures: sortByName(
+        TRAINING_NATURES.filter(
+          (nature) => !natureStatEffect(nature).increasedStat,
+        ),
+      ),
+    },
+  ];
+}
 
 export type TrainingValueMode = "evs" | "stats";
 
@@ -125,23 +164,49 @@ function BuildCard({
   showCalculatedStats: boolean;
   level: number;
 }) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const statLabel = (name: string) => {
     const key = STAT_LABELS[name];
     return key ? t(key) : formatName(name);
   };
+  const natureGroups = trainingNatureGroups(kind, language, t);
   const [chosenNature, setChosenNature] = useState<TrainingNature | null>(
     null,
   );
+  const [evValues, setEvValues] = useState<TrainingStatValues>(() =>
+    recommended ? trainingEvsFromAdvice(recommended) : {},
+  );
+  const [ivValues, setIvValues] = useState<TrainingStatValues>(() =>
+    Object.fromEntries(TRAINING_STAT_ORDER.map((stat) => [stat, 31])),
+  );
+  const [editingStat, setEditingStat] = useState<string | null>(null);
+  const openStatEditor = useCallback(
+    (stat: string) => setEditingStat(stat),
+    [],
+  );
+  const closeStatEditor = useCallback(() => setEditingStat(null), []);
   // The recommended nature is the starting point; the picker overrides it.
   const nature = chosenNature ?? recommended?.nature;
   const advice: TrainingAdvice | null =
     recommended && nature
-      ? { ...recommended, nature, ...natureStatEffect(nature) }
+      ? {
+          ...recommended,
+          nature,
+          ...natureStatEffect(nature),
+          evs: TRAINING_STAT_ORDER.map((stat) => ({
+            stat,
+            value: evValues[stat] ?? 0,
+          })),
+        }
       : null;
   const calculatedStats = advice
-    ? trainingStatsForAdviceAtLevel(detail.stats, advice, level)
+    ? trainingStatsForAdviceAtLevel(detail.stats, advice, level, ivValues)
     : null;
+  const resetBuild = () => {
+    setChosenNature(null);
+    setEvValues(recommended ? trainingEvsFromAdvice(recommended) : {});
+    setIvValues(Object.fromEntries(TRAINING_STAT_ORDER.map((stat) => [stat, 31])));
+  };
 
   return (
     <div className="flex min-w-0 flex-col gap-4 rounded-xl border border-border/50 p-4">
@@ -163,17 +228,24 @@ function BuildCard({
               }
               className="mt-1 max-w-full rounded-lg border border-border/50 bg-surface-muted px-2 py-1 text-xl font-bold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              {TRAINING_NATURES.map((option) => {
-                const effect = natureStatEffect(option);
-                return (
-                  <option key={option} value={option}>
-                    {t(natureLabelKey(option))}
-                    {effect.increasedStat
-                      ? ` (↑ ${statLabel(effect.increasedStat)}, ↓ ${statLabel(effect.decreasedStat)})`
-                      : ""}
-                  </option>
-                );
-              })}
+              {natureGroups.map(({ stat, natures }) => (
+                <optgroup
+                  key={stat || "neutral"}
+                  label={stat ? statLabel(stat) : t("detail.natureNeutral")}
+                >
+                  {natures.map((option) => {
+                    const effect = natureStatEffect(option);
+                    return (
+                      <option key={option} value={option}>
+                        {t(natureLabelKey(option))}
+                        {effect.increasedStat
+                          ? ` (↑ ${statLabel(effect.increasedStat)}, ↓ ${statLabel(effect.decreasedStat)})`
+                          : ""}
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              ))}
             </select>
             <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
               {advice.increasedStat ? (
@@ -203,7 +275,9 @@ function BuildCard({
             <EvRadarChart
               increasedStat={advice.increasedStat}
               decreasedStat={advice.decreasedStat}
-              stats={EV_STAT_ORDER.map((stat) => ({
+              onSelectStat={openStatEditor}
+              editStatLabel={t("detail.editStat")}
+              stats={TRAINING_STAT_ORDER.map((stat) => ({
                 stat,
                 label: statLabel(stat),
                 value: showCalculatedStats
@@ -218,11 +292,36 @@ function BuildCard({
                 color: STAT_COLORS[stat] ?? "bg-accent",
               }))}
             />
+            {editingStat && (
+              <TrainingStatEditor
+                stat={editingStat}
+                statLabel={statLabel(editingStat)}
+                statColor={STAT_COLORS[editingStat] ?? "bg-accent"}
+                accentColor={STAT_ACCENT_COLORS[editingStat] ?? "#047857"}
+                iv={ivValues[editingStat] ?? 31}
+                ev={evValues[editingStat] ?? 0}
+                maxEv={maxTrainingEvForStat(evValues, editingStat)}
+                remainingEvs={Math.max(
+                  0,
+                  MAX_TOTAL_EVS - totalTrainingEvs(evValues),
+                )}
+                onChangeIv={(value) =>
+                  setIvValues((current) => ({ ...current, [editingStat]: value }))
+                }
+                onChangeEv={(value) =>
+                  setEvValues((current) =>
+                    trainingEvsWithStatValue(current, editingStat, value),
+                  )
+                }
+                onReset={resetBuild}
+                onClose={closeStatEditor}
+              />
+            )}
           </div>
           <div>
             <p className="mb-2 font-medium">{t("detail.suggestedMoves")}</p>
             <SuggestedMoves
-              advice={recommended ?? advice}
+              advice={advice}
               detail={detail}
               moves={moves}
               game={game}
@@ -371,6 +470,7 @@ export function TrainingGuide({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <BuildCard
+          key={`${detail.pokemonId}:${detail.name}:${game ?? "no-game"}:offensive`}
           title={t("detail.offensiveExample")}
           icon="⚔️"
           advice={offensive}
@@ -382,6 +482,7 @@ export function TrainingGuide({
           level={level}
         />
         <BuildCard
+          key={`${detail.pokemonId}:${detail.name}:${game ?? "no-game"}:defensive`}
           title={t("detail.defensiveExample")}
           icon="🛡️"
           advice={defensive}

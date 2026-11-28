@@ -22,3 +22,13 @@ export const STAT_COLORS: Record<string, string> = {
   "special-defense": "bg-green-500",
   speed: "bg-pink-500",
 };
+
+export const STAT_ACCENT_COLORS: Record<string, string> = {
+  hp: "#ef4444",
+  attack: "#f97316",
+  defense: "#eab308",
+  special: "#3b82f6",
+  "special-attack": "#3b82f6",
+  "special-defense": "#22c55e",
+  speed: "#ec4899",
+};

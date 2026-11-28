@@ -7,8 +7,13 @@ import {
   PokemonDetails,
   toggleAbilityDescriptionMode,
 } from "@/components/pokedex/PokemonDetails";
-import { toggleTrainingValueMode } from "@/components/pokedex/TrainingGuide";
+import {
+  toggleTrainingValueMode,
+  trainingNatureGroups,
+} from "@/components/pokedex/TrainingGuide";
 import type { PokemonMovesState } from "@/hooks/usePokemonMoves";
+import type { Language } from "@/lib/i18n/languages";
+import { translate, type MessageKey } from "@/lib/i18n/messages";
 import type { PokemonDetail } from "@/lib/pokeapi/detail";
 import type { MoveInfo, PokemonMoves } from "@/lib/pokeapi/moves";
 
@@ -101,18 +106,92 @@ describe("PokemonDetails", () => {
     expect(markup).toContain('value="100"');
     expect(markup.match(/aria-label="Level (?:20|40|60|80)"/g)).toHaveLength(4);
     expect(markup).toContain(
-      "Berekend met het gekozen level en 31 IV’s. De grafiekvorm blijft de EV-verdeling tonen.",
+      "Berekend met het gekozen level en de ingestelde IV’s en EV’s.",
     );
     expect(markup).toContain("rounded-xl border border-border/50 p-4");
     expect(markup).toContain("Aanvallend voorbeeld");
     expect(markup).toMatch(/<option value="jolly" selected="">Jolly/);
+    const natureOptions = [
+      ...markup.matchAll(/<select aria-label="Nature kiezen"[\s\S]*?<\/select>/g),
+    ].map(([select]) =>
+      [...select.matchAll(/<option value="([^"]+)"/g)].map(([, value]) => value),
+    );
+    expect(natureOptions).toHaveLength(2);
+    const [offensiveNatures, defensiveNatures] = natureOptions;
+    const renderedNatureGroups = [
+      ...markup.matchAll(
+        /(<select aria-label="Nature kiezen"[\s\S]*?<\/select>)/g,
+      ),
+    ].map(([, select]) =>
+      [...select.matchAll(/<optgroup label="([^"]+)">([\s\S]*?)<\/optgroup>/g)].map(
+        ([, label, content]) => ({
+          label,
+          natures: [...content.matchAll(/<option value="([^"]+)"/g)].map(
+            ([, value]) => value,
+          ),
+        }),
+      ),
+    );
+    expect(renderedNatureGroups).toEqual([
+      [
+        { label: "Aanval", natures: ["adamant", "brave", "lonely", "naughty"] },
+        {
+          label: "Speciale aanval",
+          natures: ["mild", "modest", "quiet", "rash"],
+        },
+        { label: "Snelheid", natures: ["hasty", "jolly", "naive", "timid"] },
+        {
+          label: "Neutraal: geen stat verhoogd of verlaagd",
+          natures: ["bashful", "docile", "hardy", "quirky", "serious"],
+        },
+      ],
+      [
+        {
+          label: "Verdediging",
+          natures: ["bold", "impish", "lax", "relaxed"],
+        },
+        {
+          label: "Speciale verdediging",
+          natures: ["calm", "careful", "gentle", "sassy"],
+        },
+        { label: "Snelheid", natures: ["hasty", "jolly", "naive", "timid"] },
+        {
+          label: "Neutraal: geen stat verhoogd of verlaagd",
+          natures: ["bashful", "docile", "hardy", "quirky", "serious"],
+        },
+      ],
+    ]);
+    expect(offensiveNatures).not.toContain("bold");
+    expect(offensiveNatures).not.toContain("relaxed");
+    expect(offensiveNatures).not.toContain("impish");
+    expect(offensiveNatures).not.toContain("lax");
+    expect(offensiveNatures).not.toContain("calm");
+    expect(offensiveNatures).not.toContain("gentle");
+    expect(offensiveNatures).not.toContain("sassy");
+    expect(offensiveNatures).not.toContain("careful");
+    expect(defensiveNatures).not.toContain("lonely");
+    expect(defensiveNatures).not.toContain("brave");
+    expect(defensiveNatures).not.toContain("adamant");
+    expect(defensiveNatures).not.toContain("naughty");
+    expect(defensiveNatures).not.toContain("modest");
+    expect(defensiveNatures).not.toContain("mild");
+    expect(defensiveNatures).not.toContain("quiet");
+    expect(defensiveNatures).not.toContain("rash");
+    for (const nature of ["timid", "hasty", "jolly", "naive"]) {
+      expect(offensiveNatures).toContain(nature);
+      expect(defensiveNatures).toContain(nature);
+    }
+    for (const nature of ["hardy", "docile", "serious", "bashful", "quirky"]) {
+      expect(offensiveNatures).toContain(nature);
+      expect(defensiveNatures).toContain(nature);
+    }
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Snelheid");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      'data-stat="speed" data-nature-effect="up" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight"',
+      'data-stat="speed" data-nature-effect="up" aria-label="IV&#x27;s en EV&#x27;s aanpassen: Snelheid" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"',
     );
     expect(markup).toContain(
-      'data-stat="special-attack" data-nature-effect="down" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight"',
+      'data-stat="special-attack" data-nature-effect="down" aria-label="IV&#x27;s en EV&#x27;s aanpassen: Speciale aanval" class="absolute -translate-x-1/2 -translate-y-1/2 break-words text-center text-xs leading-tight cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"',
     );
     expect(markup).toContain('<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span>');
     expect(markup).toContain('<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-blue-700 dark:text-blue-400">↓</span>');
@@ -120,21 +199,24 @@ describe("PokemonDetails", () => {
     expect(markup).not.toContain("leading-tight font-semibold text-blue-700");
     expect(markup).not.toContain("rounded-full text-white");
     expect(markup.match(/viewBox="0 0 240 240"/g)).toHaveLength(2);
+    expect(markup.match(/type="button" data-stat="/g)).toHaveLength(12);
+    expect(markup.match(/aria-label="IV&#x27;s en EV&#x27;s aanpassen:/g)).toHaveLength(12);
+    expect(markup).not.toContain('role="dialog"');
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-orange-500"></span><span class="block min-w-0 max-w-full break-words">Aanval</span></span><span class="block font-semibold tabular-nums">359</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-orange-500"></span><span class="block min-w-0 max-w-full break-words">Aanval</span></span><span class="block font-semibold tabular-nums">359</span></button>',
     );
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-pink-500"></span><span class="block min-w-0 max-w-full break-words">Snelheid</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span></span><span class="block font-semibold tabular-nums text-foreground">328</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-pink-500"></span><span class="block min-w-0 max-w-full break-words">Snelheid</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span></span><span class="block font-semibold tabular-nums text-foreground">328</span></button>',
     );
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-red-500"></span><span class="block min-w-0 max-w-full break-words">HP</span></span><span class="block font-semibold tabular-nums">302</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-red-500"></span><span class="block min-w-0 max-w-full break-words">HP</span></span><span class="block font-semibold tabular-nums">302</span></button>',
     );
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-blue-500"></span><span class="block min-w-0 max-w-full break-words">Speciale aanval</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-blue-700 dark:text-blue-400">↓</span></span><span class="block font-semibold tabular-nums text-foreground">140</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-blue-500"></span><span class="block min-w-0 max-w-full break-words">Speciale aanval</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-blue-700 dark:text-blue-400">↓</span></span><span class="block font-semibold tabular-nums text-foreground">140</span></button>',
     );
     const calculatedStatLabels = [
       ...markup.matchAll(
-        /data-stat="([^"]+)"[^>]*><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-[^"]+"><\/span><span class="block min-w-0 max-w-full break-words">([^<]+)<\/span>(?:<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none [^"]+">[↑↓]<\/span>)?<\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/span>/g,
+        /data-stat="([^"]+)"[^>]*><span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-[^"]+"><\/span><span class="block min-w-0 max-w-full break-words">([^<]+)<\/span>(?:<span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none [^"]+">[↑↓]<\/span>)?<\/span><span class="block font-semibold tabular-nums(?: text-foreground)?">(\d+)<\/span><\/button>/g,
       ),
     ].map(([, stat, label, value]) => ({ stat, label, value }));
     const expectedEvStatOrder = [
@@ -158,16 +240,46 @@ describe("PokemonDetails", () => {
     expect(markup).toContain("aria-hidden=\"true\">↑</span> Verhoogt Verdediging");
     expect(markup).toContain("aria-hidden=\"true\">↓</span> Verlaagt Speciale aanval");
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-yellow-500"></span><span class="block min-w-0 max-w-full break-words">Verdediging</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span></span><span class="block font-semibold tabular-nums text-foreground">284</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-yellow-500"></span><span class="block min-w-0 max-w-full break-words">Verdediging</span><span aria-hidden="true" class="absolute left-full top-0 ml-1 font-bold leading-none text-red-600 dark:text-red-400">↑</span></span><span class="block font-semibold tabular-nums text-foreground">284</span></button>',
     );
     expect(markup).toContain(
-      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-green-500"></span><span class="block min-w-0 max-w-full break-words">Speciale verdediging</span></span><span class="block font-semibold tabular-nums">197</span>',
+      '<span class="relative mx-auto block w-fit max-w-full"><span aria-hidden="true" class="absolute -left-3 top-1 size-2 rounded-full bg-green-500"></span><span class="block min-w-0 max-w-full break-words">Speciale verdediging</span></span><span class="block font-semibold tabular-nums">197</span></button>',
     );
     expect(markup).toContain("Over deze voorbeelden");
     expect(markup).not.toContain("Gebalanceerd alternatief");
     expect(markup).not.toContain("128 Verdediging");
     expect(markup).not.toContain("128 Speciale verdediging");
     expect(markup).toContain("egg moves zijn niet meegenomen");
+  });
+
+  it("sorts each nature group by its translated name for the active locale", () => {
+    const languages: Language[] = ["nl", "en", "de", "fr", "ja", "es", "it", "ko"];
+    const builds = [
+      {
+        kind: "offensive" as const,
+        statOrder: ["attack", "special-attack", "speed", ""],
+      },
+      {
+        kind: "defensive" as const,
+        statOrder: ["defense", "special-defense", "speed", ""],
+      },
+    ];
+
+    for (const language of languages) {
+      const t = (key: MessageKey) => translate(language, key);
+      const collator = new Intl.Collator(language, { sensitivity: "base" });
+
+      for (const build of builds) {
+        const groups = trainingNatureGroups(build.kind, language, t);
+        expect(groups.map(({ stat }) => stat)).toEqual(build.statOrder);
+        for (const group of groups) {
+          const names = group.natures.map((nature) => t(`nature.${nature}`));
+          expect(names).toEqual(
+            [...names].sort((first, second) => collator.compare(first, second)),
+          );
+        }
+      }
+    }
   });
 
   it("toggles the shared training chart value mode in both directions", () => {
