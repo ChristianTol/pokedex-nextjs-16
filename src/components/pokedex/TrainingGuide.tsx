@@ -78,12 +78,13 @@ export function trainingNatureGroups(
   ];
 }
 
-export type TrainingValueMode = "evs" | "stats";
+export type TrainingValueMode = "evs" | "stats" | "ivs";
 
 export function toggleTrainingValueMode(
   mode: TrainingValueMode,
 ): TrainingValueMode {
-  return mode === "evs" ? "stats" : "evs";
+  if (mode === "stats") return "evs";
+  return mode === "evs" ? "ivs" : "stats";
 }
 
 function SuggestedMoves({
@@ -156,6 +157,7 @@ function BuildCard({
   game,
   kind,
   showCalculatedStats,
+  valueMode,
   onToggleValues,
   level,
 }: {
@@ -167,6 +169,7 @@ function BuildCard({
   game: string | null;
   kind: TrainingBuildKind;
   showCalculatedStats: boolean;
+  valueMode: TrainingValueMode;
   onToggleValues: () => void;
   level: number;
 }) {
@@ -284,9 +287,11 @@ function BuildCard({
           </div>
           <div>
             <p className="mb-2 font-medium">
-              {showCalculatedStats
-                ? t("detail.level100Stats").replace("{level}", String(level))
-                : t("detail.evs")}
+              {valueMode === "ivs"
+                ? t("detail.ivSpread")
+                : showCalculatedStats
+                  ? t("detail.level100Stats").replace("{level}", String(level))
+                  : t("detail.evs")}
             </p>
             <EvRadarChart
               increasedStat={advice.increasedStat}
@@ -295,24 +300,35 @@ function BuildCard({
               onToggle={onToggleValues}
               toggled={showCalculatedStats}
               toggleLabel={t(
-                showCalculatedStats
+                valueMode === "stats"
                   ? "detail.showEvValues"
-                  : "detail.showLevel100Stats",
+                  : valueMode === "evs"
+                    ? "detail.showIvValues"
+                    : "detail.showLevel100Stats",
               )}
               editStatLabel={t("detail.editStat")}
               chartScale={editingStat ? chartScale : 1}
               stats={TRAINING_STAT_ORDER.map((stat) => ({
                 stat,
                 label: statLabel(stat),
-                value: showCalculatedStats
-                  ? (calculatedStats?.[stat] ?? 0)
-                  : (advice.evs.find((ev) => ev.stat === stat)?.value ?? 0),
-                maxValue: showCalculatedStats
-                  ? RADAR_CHART_STAT_CEILING
-                  : undefined,
-                displayValue: showCalculatedStats
-                  ? (calculatedStats?.[stat] ?? t("detail.unavailableStat"))
-                  : undefined,
+                value:
+                  valueMode === "ivs"
+                    ? (ivValues[stat] ?? 31)
+                    : showCalculatedStats
+                      ? (calculatedStats?.[stat] ?? 0)
+                      : (advice.evs.find((ev) => ev.stat === stat)?.value ?? 0),
+                maxValue:
+                  valueMode === "ivs"
+                    ? 31
+                    : showCalculatedStats
+                      ? RADAR_CHART_STAT_CEILING
+                      : undefined,
+                displayValue:
+                  valueMode === "ivs"
+                    ? (ivValues[stat] ?? 31)
+                    : showCalculatedStats
+                      ? (calculatedStats?.[stat] ?? t("detail.unavailableStat"))
+                      : undefined,
                 color: STAT_COLORS[stat] ?? "bg-accent",
               }))}
             />
@@ -490,6 +506,7 @@ export function TrainingGuide({
           game={game}
           kind="offensive"
           showCalculatedStats={showCalculatedStats}
+          valueMode={valueMode}
           onToggleValues={toggleValues}
           level={level}
         />
@@ -503,6 +520,7 @@ export function TrainingGuide({
           game={game}
           kind="defensive"
           showCalculatedStats={showCalculatedStats}
+          valueMode={valueMode}
           onToggleValues={toggleValues}
           level={level}
         />

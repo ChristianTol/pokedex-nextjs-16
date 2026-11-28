@@ -89,6 +89,8 @@ const nl = {
   "detail.level100Stats": "Berekende stats (level {level})",
   "detail.showLevel100Stats": "Toon berekende stats",
   "detail.showEvValues": "Toon EV-waarden",
+  "detail.showIvValues": "Toon IV-waarden",
+  "detail.ivSpread": "IV-verdeling",
   "detail.calculatedLevel": "Level",
   "detail.level100StatAssumptions":
     "Berekend met het gekozen level en de ingestelde IV’s en EV’s.",
@@ -417,6 +419,8 @@ const en: Messages = {
   "detail.level100Stats": "Calculated stats (level {level})",
   "detail.showLevel100Stats": "Show calculated stats",
   "detail.showEvValues": "Show EV values",
+  "detail.showIvValues": "Show IV values",
+  "detail.ivSpread": "IV spread",
   "detail.calculatedLevel": "Level",
   "detail.level100StatAssumptions":
     "Calculated with the selected level and the configured IVs and EVs.",
@@ -741,6 +745,8 @@ const de: Messages = {
   "detail.level100Stats": "Berechnete Werte (Level {level})",
   "detail.showLevel100Stats": "Berechnete Werte anzeigen",
   "detail.showEvValues": "EV-Werte anzeigen",
+  "detail.showIvValues": "IV-Werte anzeigen",
+  "detail.ivSpread": "IV-Verteilung",
   "detail.calculatedLevel": "Level",
   "detail.level100StatAssumptions":
     "Berechnet mit dem ausgewählten Level und den eingestellten IVs und EVs.",
@@ -1065,6 +1071,8 @@ const fr: Messages = {
   "detail.level100Stats": "Stats calculées (niveau {level})",
   "detail.showLevel100Stats": "Afficher les stats calculées",
   "detail.showEvValues": "Afficher les valeurs d’EV",
+  "detail.showIvValues": "Afficher les valeurs d’IV",
+  "detail.ivSpread": "Répartition des IV",
   "detail.calculatedLevel": "Niveau",
   "detail.level100StatAssumptions":
     "Calculé au niveau sélectionné avec les IV et EV configurés.",
@@ -1389,6 +1397,8 @@ const ja: Messages = {
   "detail.level100Stats": "レベル{level}の計算済み能力値",
   "detail.showLevel100Stats": "計算済み能力値を表示",
   "detail.showEvValues": "努力値を表示",
+  "detail.showIvValues": "個体値を表示",
+  "detail.ivSpread": "個体値の配分",
   "detail.calculatedLevel": "レベル",
   "detail.level100StatAssumptions":
     "選択したレベルと設定した個体値・努力値で計算しています。",
@@ -1711,6 +1721,8 @@ const es: Messages = {
   "detail.level100Stats": "Estadísticas calculadas (nivel {level})",
   "detail.showLevel100Stats": "Mostrar estadísticas calculadas",
   "detail.showEvValues": "Mostrar valores de EV",
+  "detail.showIvValues": "Mostrar valores de IV",
+  "detail.ivSpread": "Distribución de IV",
   "detail.calculatedLevel": "Nivel",
   "detail.level100StatAssumptions":
     "Cálculo con el nivel seleccionado y los IV y EV configurados.",
@@ -2036,6 +2048,8 @@ const it: Messages = {
   "detail.level100Stats": "Statistiche calcolate (livello {level})",
   "detail.showLevel100Stats": "Mostra le statistiche calcolate",
   "detail.showEvValues": "Mostra i valori EV",
+  "detail.showIvValues": "Mostra i valori IV",
+  "detail.ivSpread": "Distribuzione degli IV",
   "detail.calculatedLevel": "Livello",
   "detail.level100StatAssumptions":
     "Calcolo al livello selezionato con gli IV e gli EV impostati.",
@@ -2361,6 +2375,8 @@ const ko: Messages = {
   "detail.level100Stats": "레벨 {level} 계산 능력치",
   "detail.showLevel100Stats": "계산 능력치 보기",
   "detail.showEvValues": "노력치 값 보기",
+  "detail.showIvValues": "개체값 보기",
+  "detail.ivSpread": "개체값 분배",
   "detail.calculatedLevel": "레벨",
   "detail.level100StatAssumptions":
     "선택한 레벨과 설정한 개체값 및 노력치를 기준으로 계산합니다.",

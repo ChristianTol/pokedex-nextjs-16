@@ -284,9 +284,10 @@ describe("PokemonDetails", () => {
     }
   });
 
-  it("toggles the shared training chart value mode in both directions", () => {
-    expect(toggleTrainingValueMode("evs")).toBe("stats");
+  it("cycles the shared training chart value mode through stats, EVs and IVs", () => {
     expect(toggleTrainingValueMode("stats")).toBe("evs");
+    expect(toggleTrainingValueMode("evs")).toBe("ivs");
+    expect(toggleTrainingValueMode("ivs")).toBe("stats");
   });
 
   it("shows game-specific suggestions and does not show stale moves while loading", () => {
