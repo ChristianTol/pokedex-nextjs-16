@@ -42,6 +42,7 @@ import {
   TitleSkeleton,
 } from "./PokemonSkeleton";
 import { TypeBadge } from "./TypeBadge";
+import { isPokemonModalSwipeExcluded } from "./pokemon-modal-swipe";
 
 /** The Pokémon before or after this one in the list. */
 export type Neighbor = { id: number; name: string };
@@ -393,7 +394,7 @@ export function PokemonModal({
         busyRef.current ||
         closingRef.current ||
         event.touches.length !== 1 ||
-        target.closest('input, select, textarea, [role="tab"]') !== null ||
+        isPokemonModalSwipeExcluded(target) ||
         scrollsSideways(target, panel);
       const touch = event.touches[0];
       swipe = taken

@@ -105,6 +105,8 @@ describe("PokemonDetails", () => {
     expect(markup).toContain('aria-label="Level"');
     expect(markup).toContain('value="100"');
     expect(markup.match(/aria-label="Level (?:20|40|60|80)"/g)).toHaveLength(4);
+    expect(markup).toContain('data-pokemon-swipe-exempt="true"');
+    expect(markup).toContain("touch-none");
     expect(markup).toContain(
       "Berekend met het gekozen level en de ingestelde IV’s en EV’s.",
     );

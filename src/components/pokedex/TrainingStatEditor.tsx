@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -11,6 +18,79 @@ export const TRAINING_STAT_EDITOR_BACKDROP_CLASS =
   "fixed inset-0 z-[60] flex items-end justify-center bg-black/20 md:items-center md:p-4";
 
 export const TRAINING_STAT_EDITOR_MOBILE_QUERY = "(max-width: 767px)";
+
+export function trainingRangeValueAtPointer(
+  clientX: number,
+  bounds: Pick<DOMRect, "left" | "width">,
+  min: number,
+  max: number,
+) {
+  const inset = Math.min(8, bounds.width / 2);
+  const travelWidth = Math.max(1, bounds.width - inset * 2);
+  const position = Math.min(
+    1,
+    Math.max(0, (clientX - bounds.left - inset) / travelWidth),
+  );
+
+  return Math.round(min + position * Math.max(0, max - min));
+}
+
+type TrainingRangeInputProps = {
+  id?: string;
+  min: number;
+  max: number;
+  value: number;
+  ariaLabel: string;
+  className?: string;
+  style?: CSSProperties;
+  onChange: (value: number) => void;
+};
+
+export function TrainingRangeInput({
+  id,
+  min,
+  max,
+  value,
+  ariaLabel,
+  className = "",
+  style,
+  onChange,
+}: TrainingRangeInputProps) {
+  const updateFromPointer = (event: PointerEvent<HTMLInputElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    onChange(trainingRangeValueAtPointer(event.clientX, bounds, min, max));
+  };
+
+  return (
+    <input
+      id={id}
+      type="range"
+      min={min}
+      max={max}
+      step={1}
+      value={value}
+      aria-label={ariaLabel}
+      onChange={(event) => onChange(Number(event.currentTarget.value))}
+      onPointerDown={(event) => {
+        if (
+          !event.isPrimary ||
+          (event.pointerType === "mouse" && event.button !== 0)
+        ) {
+          return;
+        }
+        event.currentTarget.setPointerCapture(event.pointerId);
+        updateFromPointer(event);
+      }}
+      onPointerMove={(event) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          updateFromPointer(event);
+        }
+      }}
+      style={style}
+      className={`${className} touch-none`.trim()}
+    />
+  );
+}
 
 type DesktopEditorPosition = {
   left: number;
@@ -171,14 +251,13 @@ function StatSlider({
           {value}
         </output>
       </span>
-      <input
+      <TrainingRangeInput
         id={id}
-        type="range"
         min={0}
         max={max}
-        step={1}
         value={value}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
+        ariaLabel={label}
+        onChange={onChange}
         style={{ accentColor }}
         className="w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       />

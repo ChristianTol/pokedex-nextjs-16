@@ -33,7 +33,11 @@ import {
 } from "@/lib/pokedex/training-builds";
 import { STAT_ACCENT_COLORS, STAT_COLORS, STAT_LABELS } from "./stat-style";
 import { EvRadarChart } from "./EvRadarChart";
-import { TrainingStatEditor } from "./TrainingStatEditor";
+import {
+  TrainingRangeInput,
+  TrainingStatEditor,
+  trainingRangeValueAtPointer,
+} from "./TrainingStatEditor";
 import { TypeIcon } from "./TypeIcon";
 
 const natureLabelKey = (nature: TrainingNature) =>
@@ -381,12 +385,9 @@ export function TrainingLevelStops({
             const bounds = event.currentTarget.parentElement?.getBoundingClientRect();
             if (!bounds) return;
 
-            const rangeWidth = Math.max(1, bounds.width - 16);
-            const position = Math.min(
-              1,
-              Math.max(0, (event.clientX - bounds.left - 8) / rangeWidth),
+            onSelectLevel(
+              trainingRangeValueAtPointer(event.clientX, bounds, 1, 100),
             );
-            onSelectLevel(Math.round(1 + position * 99));
           }}
           onClick={(event: MouseEvent<HTMLButtonElement>) => {
             if (event.detail === 0) onSelectLevel(stop);
@@ -394,7 +395,7 @@ export function TrainingLevelStops({
           style={{
             left: `calc(${((stop - 1) / 99) * 100}% + ${8 - ((stop - 1) / 99) * 16}px)`,
           }}
-          className="group pointer-events-auto absolute top-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#047857] dark:focus-visible:outline-[#6ee7b7]"
+          className="group pointer-events-auto absolute top-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#047857] dark:focus-visible:outline-[#6ee7b7]"
         >
           <span
             aria-hidden="true"
@@ -458,15 +459,16 @@ export function TrainingGuide({
                   {level}
                 </output>
               </span>
-              <span className="relative block h-10 w-full">
-                <input
-                  type="range"
+              <span
+                data-pokemon-swipe-exempt
+                className="relative block h-10 w-full touch-none"
+              >
+                <TrainingRangeInput
                   min={1}
                   max={100}
-                  step={1}
                   value={level}
-                  aria-label={t("detail.calculatedLevel")}
-                  onChange={(event) => setLevel(Number(event.currentTarget.value))}
+                  ariaLabel={t("detail.calculatedLevel")}
+                  onChange={setLevel}
                   className="absolute inset-0 z-0 m-0 h-full w-full accent-[#047857] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#047857] dark:accent-[#6ee7b7] dark:focus-visible:outline-[#6ee7b7]"
                 />
                 <TrainingLevelStops
