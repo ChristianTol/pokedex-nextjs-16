@@ -22,6 +22,7 @@ export function TypeIcon({
       alt=""
       width={size}
       height={size}
+      unoptimized={bare}
       className={`shrink-0 ${bare ? "" : "rounded-full"} ${className}`}
     />
   );

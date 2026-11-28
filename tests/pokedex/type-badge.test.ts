@@ -2,9 +2,14 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TypeBadge } from "@/components/pokedex/TypeBadge";
+import { TypeIcon } from "@/components/pokedex/TypeIcon";
 
 function renderBadge(props: React.ComponentProps<typeof TypeBadge>) {
   return renderToStaticMarkup(createElement(TypeBadge, props));
+}
+
+function renderIcon(props: React.ComponentProps<typeof TypeIcon>) {
+  return renderToStaticMarkup(createElement(TypeIcon, props));
 }
 
 describe("TypeBadge", () => {
@@ -33,5 +38,17 @@ describe("TypeBadge", () => {
     expect(markup).toContain("×½");
     expect(markup).toContain('aria-hidden="true"');
     expect(markup).toContain("text-red-300");
+  });
+
+  it("skips the configured image loader for local glyphs but keeps external type icons", () => {
+    const glyph = renderIcon({ type: "flying", bare: true });
+    const icon = renderIcon({ type: "flying" });
+
+    expect(glyph).toContain('src="/type-icons/glyph/flying.svg"');
+    expect(glyph).not.toContain("srcSet=");
+    expect(icon).toContain(
+      "srcSet=\"/_next/image?url=https%3A%2F%2Fraw.githubusercontent.com%2FPokeAPI%2Fsprites",
+    );
+    expect(icon).not.toContain('unoptimized=""');
   });
 });

@@ -59,7 +59,7 @@ function FormSpriteImage({
           width={64}
           height={64}
           unoptimized
-          className={`size-16 object-contain ${showSprite ? "[image-rendering:pixelated]" : ""}`}
+          className={`max-h-full max-w-full h-auto w-auto object-contain ${showSprite ? "[image-rendering:pixelated]" : ""}`}
           onError={() => setFailedCount((count) => count + 1)}
       />
   );

@@ -199,7 +199,7 @@ function EvolutionSprite({
       width={96}
       height={96}
       unoptimized
-      className={`size-20 object-contain ${showSprite ? "[image-rendering:pixelated]" : ""}`}
+      className={`max-h-full max-w-full h-auto w-auto object-contain ${showSprite ? "[image-rendering:pixelated]" : ""}`}
       onError={() => setFailedCount((count) => count + 1)}
     />
   ) : null;

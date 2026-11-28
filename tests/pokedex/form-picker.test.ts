@@ -89,6 +89,7 @@ describe("FormPicker", () => {
     expect(markup).toContain('src="/charizard.png"');
     expect(markup).toContain('src="/mega-x.png"');
     expect(markup).toContain('src="/gmax-animated.webp"');
+    expect(markup).toContain("max-h-full max-w-full h-auto w-auto object-contain");
     expect(markup.indexOf('src="/mega-x.png"')).toBeLessThan(
         markup.indexOf(">Mega X</span>"),
     );

@@ -39,6 +39,8 @@ type Props = {
   regions: Region[];
 };
 
+const EAGER_CARD_COUNT = 5;
+
 export function PokedexList({ entries, types, regions }: Props) {
   const { search, replace, push, close } = useUrlSearch();
   const { language, t } = useLanguage();
@@ -271,10 +273,11 @@ export function PokedexList({ entries, types, regions }: Props) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-            {visible.map((entry) => (
+            {visible.map((entry, index) => (
               <PokemonCard
                 key={entry.id}
                 entry={entry}
+                eager={index < EAGER_CARD_COUNT}
                 types={summaries[entry.id]?.types}
                 names={summaries[entry.id]?.names}
                 typesLoading={!summaries[entry.id] && !failed}

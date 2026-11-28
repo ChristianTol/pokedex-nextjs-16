@@ -28,6 +28,8 @@ type Props = {
   onToggleFavorite: (entry: PokemonIndexEntry) => void;
   /** Whether the shiny version is shown. */
   shiny: boolean;
+  /** Load the artwork eagerly when this card is near the top of the list. */
+  eager?: boolean;
   onToggleShiny: (entry: PokemonIndexEntry) => void;
   /** The stat the list is sorted on, e.g. "Speed 90". */
   statText?: string;
@@ -43,6 +45,7 @@ export function PokemonCard({
   favorite,
   onToggleFavorite,
   shiny,
+  eager = false,
   onToggleShiny,
   statText,
 }: Props) {
@@ -110,6 +113,7 @@ export function PokemonCard({
             width={475}
             height={475}
             sizes="(min-width: 1280px) 20vw, (min-width: 640px) 30vw, 45vw"
+            loading={eager ? "eager" : "lazy"}
             onLoad={() => setArtworkLoaded(true)}
             onError={() => setArtworkLoaded(true)}
             className="relative size-full object-contain"

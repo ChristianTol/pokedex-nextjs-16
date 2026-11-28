@@ -96,7 +96,9 @@ describe("EvolutionChain image mode", () => {
     expect(unselected).toContain(
       `${tileClass}border-border hover:border-muted hover:bg-surface-muted"`,
     );
-    expect(unselected).toContain('class="size-20 object-contain');
+    expect(unselected).toContain(
+      'class="max-h-full max-w-full h-auto w-auto object-contain',
+    );
     expect(unselected).not.toContain("underline");
     const spriteIndex = unselected!.indexOf('src="/regional-sv.png"');
     const numberIndex = unselected!.indexOf('class="text-xs text-muted"');
