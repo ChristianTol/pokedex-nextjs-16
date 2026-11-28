@@ -23,6 +23,9 @@ export const TRAINING_STAT_EDITOR_DIMMER_CLASS =
 
 export const TRAINING_STAT_EDITOR_MOBILE_QUERY = "(max-width: 767px)";
 
+/** Natural desktop panel width (Tailwind `max-w-md`); never re-measured. */
+export const TRAINING_STAT_EDITOR_DESKTOP_WIDTH = 448;
+
 export function trainingStatSheetTop(backdropBottom: number, panelHeight: number) {
   return backdropBottom - panelHeight;
 }
@@ -645,7 +648,7 @@ export function TrainingStatEditor({
         chartRight: chartRect.right,
         chartTop: chartRect.top,
         chartHeight: chartRect.height,
-        panelWidth: panelRect.width,
+        panelWidth: TRAINING_STAT_EDITOR_DESKTOP_WIDTH,
         panelHeight: panelRect.height,
         viewportWidth: window.innerWidth,
         placement: desktopPlacement,
