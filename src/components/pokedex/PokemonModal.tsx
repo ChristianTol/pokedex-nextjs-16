@@ -518,6 +518,7 @@ export function PokemonModal({
     >
       <div
         ref={panelRef}
+        data-training-modal-scroll
         role="dialog"
         aria-modal="true"
         aria-labelledby="pokemon-dialog-title"
@@ -526,7 +527,10 @@ export function PokemonModal({
           background: typeBackground(shown?.types ?? initialTypes ?? []),
         }}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-surface/60 px-4 py-3 backdrop-blur-md sm:px-6">
+        <div
+          data-training-modal-header
+          className="sticky top-0 z-10 flex items-center justify-between gap-2 bg-surface/60 px-4 py-3 backdrop-blur-md sm:px-6"
+        >
           <div className="flex items-center gap-1">
             <NeighborButton
               direction="previous"

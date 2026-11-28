@@ -180,11 +180,21 @@ function BuildCard({
     Object.fromEntries(TRAINING_STAT_ORDER.map((stat) => [stat, 31])),
   );
   const [editingStat, setEditingStat] = useState<string | null>(null);
+  const [editingChart, setEditingChart] = useState<HTMLElement | null>(null);
+  const [chartScale, setChartScale] = useState(1);
   const openStatEditor = useCallback(
-    (stat: string) => setEditingStat(stat),
+    (stat: string, opener: HTMLButtonElement) => {
+      setEditingChart(opener.closest<HTMLElement>("[data-ev-radar-chart]"));
+      setChartScale(1);
+      setEditingStat(stat);
+    },
     [],
   );
-  const closeStatEditor = useCallback(() => setEditingStat(null), []);
+  const closeStatEditor = useCallback(() => {
+    setEditingChart(null);
+    setChartScale(1);
+    setEditingStat(null);
+  }, []);
   // The recommended nature is the starting point; the picker overrides it.
   const nature = chosenNature ?? recommended?.nature;
   const advice: TrainingAdvice | null =
@@ -277,6 +287,7 @@ function BuildCard({
               decreasedStat={advice.decreasedStat}
               onSelectStat={openStatEditor}
               editStatLabel={t("detail.editStat")}
+              chartScale={editingStat ? chartScale : 1}
               stats={TRAINING_STAT_ORDER.map((stat) => ({
                 stat,
                 label: statLabel(stat),
@@ -295,6 +306,9 @@ function BuildCard({
             {editingStat && (
               <TrainingStatEditor
                 stat={editingStat}
+                chartElement={editingChart}
+                chartScale={chartScale}
+                onChartScaleChange={setChartScale}
                 statLabel={statLabel(editingStat)}
                 statColor={STAT_COLORS[editingStat] ?? "bg-accent"}
                 accentColor={STAT_ACCENT_COLORS[editingStat] ?? "#047857"}

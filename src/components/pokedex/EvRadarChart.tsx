@@ -63,12 +63,14 @@ export function EvRadarChart({
   decreasedStat,
   onSelectStat,
   editStatLabel,
+  chartScale = 1,
 }: {
   stats: EvRadarStat[];
   increasedStat?: string;
   decreasedStat?: string;
   onSelectStat?: (stat: string, opener: HTMLButtonElement) => void;
   editStatLabel?: string;
+  chartScale?: number;
 }) {
   const clipId = `ev-radar-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const radii = Array.from({ length: STAT_COUNT }, (_, index) => {
@@ -80,8 +82,15 @@ export function EvRadarChart({
   const valuePoints = radii.map((radius, index) => point(index, radius));
 
   return (
-    <div className="flex min-w-0 flex-col items-center gap-2">
-      <div className="relative aspect-square w-full max-w-72">
+    <div
+      data-ev-radar-chart
+      className="flex min-w-0 flex-col items-center gap-2"
+      style={{ zoom: chartScale }}
+    >
+      <div
+        data-ev-radar-visual
+        className="relative aspect-square w-full max-w-72"
+      >
         <svg
           aria-hidden="true"
           className="absolute left-1/2 top-1/2 h-auto w-full max-w-56 -translate-x-1/2 -translate-y-1/2 text-[#047857] dark:text-[#6ee7b7]"

@@ -4,6 +4,21 @@ import { describe, expect, it } from "vitest";
 import { EvRadarChart } from "@/components/pokedex/EvRadarChart";
 
 describe("EvRadarChart", () => {
+  it("marks the active chart and scales it when the mobile editor needs room", () => {
+    const markup = renderToStaticMarkup(
+      createElement(EvRadarChart, {
+        chartScale: 0.75,
+        stats: [
+          { stat: "hp", label: "HP", value: 4, color: "bg-red-500" },
+        ],
+      }),
+    );
+
+    expect(markup).toContain('data-ev-radar-chart="true"');
+    expect(markup).toContain('data-ev-radar-visual="true"');
+    expect(markup).toContain("zoom:0.75");
+  });
+
   it("renders accessible stat buttons when an editor callback is supplied", () => {
     const markup = renderToStaticMarkup(
       createElement(EvRadarChart, {
