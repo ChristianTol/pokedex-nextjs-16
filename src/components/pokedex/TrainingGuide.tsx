@@ -156,6 +156,7 @@ function BuildCard({
   game,
   kind,
   showCalculatedStats,
+  onToggleValues,
   level,
 }: {
   title: string;
@@ -166,6 +167,7 @@ function BuildCard({
   game: string | null;
   kind: TrainingBuildKind;
   showCalculatedStats: boolean;
+  onToggleValues: () => void;
   level: number;
 }) {
   const { language, t } = useLanguage();
@@ -290,6 +292,13 @@ function BuildCard({
               increasedStat={advice.increasedStat}
               decreasedStat={advice.decreasedStat}
               onSelectStat={openStatEditor}
+              onToggle={onToggleValues}
+              toggled={showCalculatedStats}
+              toggleLabel={t(
+                showCalculatedStats
+                  ? "detail.showEvValues"
+                  : "detail.showLevel100Stats",
+              )}
               editStatLabel={t("detail.editStat")}
               chartScale={editingStat ? chartScale : 1}
               stats={TRAINING_STAT_ORDER.map((stat) => ({
@@ -425,6 +434,8 @@ export function TrainingGuide({
   const [valueMode, setValueMode] = useState<TrainingValueMode>("stats");
   const [level, setLevel] = useState(100);
   const showCalculatedStats = valueMode === "stats";
+  const toggleValues = () =>
+    setValueMode((current) => toggleTrainingValueMode(current));
   const offensive = trainingAdviceForStats(detail.stats, game);
   const defensive = defensiveTrainingAdviceForStats(detail.stats, game);
 
@@ -436,22 +447,7 @@ export function TrainingGuide({
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">{t("detail.trainingAdviceSummary")}</p>
       <div className="flex flex-col items-start gap-3">
-        <button
-          type="button"
-          aria-pressed={showCalculatedStats}
-          onClick={() =>
-            setValueMode((current) => toggleTrainingValueMode(current))
-          }
-          className="rounded-lg border border-border/50 bg-surface-muted px-3 py-1.5 text-sm font-medium hover:bg-surface-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          {t(
-            showCalculatedStats
-              ? "detail.showEvValues"
-              : "detail.showLevel100Stats",
-          )}
-        </button>
-        {showCalculatedStats && (
-          <>
+        <>
             <label className="grid w-full max-w-xs gap-1 text-sm font-medium">
               <span className="flex items-center justify-between">
                 <span>{t("detail.calculatedLevel")}</span>
@@ -481,8 +477,7 @@ export function TrainingGuide({
             <p className="text-xs text-muted">
               {t("detail.level100StatAssumptions")}
             </p>
-          </>
-        )}
+        </>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <BuildCard
@@ -495,6 +490,7 @@ export function TrainingGuide({
           game={game}
           kind="offensive"
           showCalculatedStats={showCalculatedStats}
+          onToggleValues={toggleValues}
           level={level}
         />
         <BuildCard
@@ -507,6 +503,7 @@ export function TrainingGuide({
           game={game}
           kind="defensive"
           showCalculatedStats={showCalculatedStats}
+          onToggleValues={toggleValues}
           level={level}
         />
       </div>

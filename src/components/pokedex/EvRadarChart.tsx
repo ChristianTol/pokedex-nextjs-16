@@ -64,6 +64,9 @@ export function EvRadarChart({
   onSelectStat,
   editStatLabel,
   chartScale = 1,
+  onToggle,
+  toggleLabel,
+  toggled,
 }: {
   stats: EvRadarStat[];
   increasedStat?: string;
@@ -71,6 +74,10 @@ export function EvRadarChart({
   onSelectStat?: (stat: string, opener: HTMLButtonElement) => void;
   editStatLabel?: string;
   chartScale?: number;
+  /** Clicking the chart itself switches between EV values and calculated stats. */
+  onToggle?: () => void;
+  toggleLabel?: string;
+  toggled?: boolean;
 }) {
   const clipId = `ev-radar-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const radii = Array.from({ length: STAT_COUNT }, (_, index) => {
@@ -226,6 +233,16 @@ export function EvRadarChart({
             );
           })}
         </svg>
+        {onToggle && (
+          <button
+            type="button"
+            data-ev-radar-toggle
+            aria-label={toggleLabel}
+            aria-pressed={toggled}
+            onClick={onToggle}
+            className="absolute left-1/2 top-1/2 size-[62%] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          />
+        )}
         {stats.map((stat, index) => {
           const position = STAT_LABEL_POSITIONS[index];
           if (!position) return null;
