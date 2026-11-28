@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -18,6 +19,134 @@ export const TRAINING_STAT_EDITOR_BACKDROP_CLASS =
   "fixed inset-0 z-[60] flex items-end justify-center bg-black/20 md:items-center md:p-4";
 
 export const TRAINING_STAT_EDITOR_MOBILE_QUERY = "(max-width: 767px)";
+
+export function trainingStatSheetTop(backdropBottom: number, panelHeight: number) {
+  return backdropBottom - panelHeight;
+}
+
+export function startTrainingStatSheetAnimation(
+  panel: Pick<HTMLElement, "animate">,
+  isMobile: boolean,
+  prefersReducedMotion: boolean,
+) {
+  if (
+    !isMobile ||
+    prefersReducedMotion ||
+    typeof panel.animate !== "function"
+  ) {
+    return null;
+  }
+
+  const animation = panel.animate(
+    [{ transform: "translateY(100%)" }, { transform: "none" }],
+    { duration: 260, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+  );
+
+  return () => animation.cancel();
+}
+
+type TrainingEditorAnimation = {
+  finished: Promise<void>;
+  cancel: () => void;
+};
+
+function trainingEditorAnimation(animations: Animation[]): TrainingEditorAnimation {
+  return {
+    finished: Promise.all(
+      animations.map((animation) => animation.finished.catch(() => undefined)),
+    ).then(() => undefined),
+    cancel: () => animations.forEach((animation) => animation.cancel()),
+  };
+}
+
+export function startTrainingStatEditorOpenAnimation(
+  panel: Pick<HTMLElement, "animate">,
+  backdrop: Pick<HTMLElement, "animate">,
+  prefersReducedMotion: boolean,
+) {
+  if (
+    prefersReducedMotion ||
+    typeof panel.animate !== "function" ||
+    typeof backdrop.animate !== "function"
+  ) {
+    return null;
+  }
+
+  const animations = [
+    panel.animate(
+      [
+        { opacity: 0, transform: "scale(0.96)" },
+        { opacity: 1, transform: "scale(1)" },
+      ],
+      { duration: 180, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+    ),
+    backdrop.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 180,
+      easing: "ease-out",
+    }),
+  ];
+  return trainingEditorAnimation(animations).cancel;
+}
+
+export function startTrainingStatEditorCloseAnimation(
+  panel: Pick<HTMLElement, "animate">,
+  backdrop: Pick<HTMLElement, "animate">,
+  isMobile: boolean,
+  prefersReducedMotion: boolean,
+): TrainingEditorAnimation | null {
+  if (
+    prefersReducedMotion ||
+    typeof panel.animate !== "function" ||
+    typeof backdrop.animate !== "function"
+  ) {
+    return null;
+  }
+
+  const animations = isMobile
+    ? [
+        panel.animate(
+          [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }],
+          { duration: 220, easing: "cubic-bezier(0.4, 0, 1, 1)" },
+        ),
+        backdrop.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 220,
+          easing: "ease-in",
+        }),
+      ]
+    : [
+        panel.animate(
+          [
+            { opacity: 1, transform: "scale(1)" },
+            { opacity: 0, transform: "scale(0.96)" },
+          ],
+          { duration: 160, easing: "ease-in" },
+        ),
+        backdrop.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 160,
+          easing: "ease-in",
+        }),
+      ];
+
+  return trainingEditorAnimation(animations);
+}
+
+export function scrollTrainingModalTo(
+  modal: Pick<HTMLElement, "scrollTop" | "scrollTo">,
+  scrollTop: number,
+  smooth: boolean,
+) {
+  if (smooth) {
+    modal.scrollTo({ top: scrollTop, behavior: "smooth" });
+  } else {
+    modal.scrollTop = scrollTop;
+  }
+}
+
+export function cancelTrainingModalScroll(
+  modal: Pick<HTMLElement, "scrollTop">,
+) {
+  modal.scrollTop = modal.scrollTop;
+}
 
 export function trainingRangeValueAtPointer(
   clientX: number,
@@ -283,11 +412,62 @@ export function TrainingStatEditor({
   onClose,
 }: Props) {
   const { t } = useLanguage();
+  const backdropRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const chartScaleRef = useRef(chartScale);
+  const isMountedRef = useRef(false);
+  const isClosingRef = useRef(false);
+  const closeAnimationRef = useRef<TrainingEditorAnimation | null>(null);
+  const hasStartedDesktopOpeningAnimationRef = useRef(false);
   const [desktopPosition, setDesktopPosition] =
     useState<DesktopEditorPosition | null>(null);
+  const [hasPositionedDesktopEditor, setHasPositionedDesktopEditor] =
+    useState(false);
+  const hasDesktopPosition = desktopPosition !== null;
+  const isMobileViewport =
+    typeof window !== "undefined" &&
+    window.matchMedia(TRAINING_STAT_EDITOR_MOBILE_QUERY).matches;
+
+  const requestClose = useCallback(() => {
+    if (isClosingRef.current) return;
+
+    const panel = panelRef.current;
+    const backdrop = backdropRef.current;
+    const closeAnimation =
+      panel && backdrop
+        ? startTrainingStatEditorCloseAnimation(
+            panel,
+            backdrop,
+            window.matchMedia(TRAINING_STAT_EDITOR_MOBILE_QUERY).matches,
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+          )
+        : null;
+
+    if (!closeAnimation) {
+      onClose();
+      return;
+    }
+
+    isClosingRef.current = true;
+    closeAnimationRef.current = closeAnimation;
+    void closeAnimation.finished.then(() => {
+      if (!isMountedRef.current || closeAnimationRef.current !== closeAnimation) {
+        return;
+      }
+      closeAnimationRef.current = null;
+      onClose();
+    });
+  }, [onClose]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      closeAnimationRef.current?.cancel();
+      closeAnimationRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     chartScaleRef.current = chartScale;
@@ -303,7 +483,7 @@ export function TrainingStatEditor({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        onClose();
+        requestClose();
         return;
       }
       if (event.key !== "Tab" || !panelRef.current) return;
@@ -328,9 +508,45 @@ export function TrainingStatEditor({
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
       document.body.style.overflow = previousOverflow;
-      if (opener?.isConnected) opener.focus();
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
-  }, [onClose]);
+  }, [requestClose]);
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const cancelAnimation = startTrainingStatSheetAnimation(
+      panel,
+      window.matchMedia(TRAINING_STAT_EDITOR_MOBILE_QUERY).matches,
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
+
+    return () => cancelAnimation?.();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (
+      !hasDesktopPosition ||
+      window.matchMedia(TRAINING_STAT_EDITOR_MOBILE_QUERY).matches ||
+      hasStartedDesktopOpeningAnimationRef.current
+    ) {
+      return;
+    }
+
+    hasStartedDesktopOpeningAnimationRef.current = true;
+    const panel = panelRef.current;
+    const backdrop = backdropRef.current;
+    if (!panel || !backdrop) return;
+
+    const cancelAnimation = startTrainingStatEditorOpenAnimation(
+      panel,
+      backdrop,
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
+
+    return () => cancelAnimation?.();
+  }, [hasDesktopPosition]);
 
   useLayoutEffect(() => {
     const modal = document.querySelector<HTMLElement>(
@@ -345,6 +561,8 @@ export function TrainingStatEditor({
     let positionFrame = 0;
     let scrollFrame = 0;
     let editorFrame = 0;
+    let shouldAnimateInitialScroll = true;
+    let hasSmoothScroll = false;
 
     const visibleChart =
       chartElement.querySelector<HTMLElement>("[data-ev-radar-visual]") ??
@@ -355,6 +573,7 @@ export function TrainingStatEditor({
       const headerRect = header.getBoundingClientRect();
       const chartRect = visibleChart.getBoundingClientRect();
       const panelRect = panel.getBoundingClientRect();
+      setHasPositionedDesktopEditor(true);
       setDesktopPosition(
         trainingDesktopEditorPosition({
           modalLeft: modalRect.left,
@@ -379,12 +598,20 @@ export function TrainingStatEditor({
       positionFrame = requestAnimationFrame(() => {
         positionFrame = 0;
         const isMobile = window.matchMedia(TRAINING_STAT_EDITOR_MOBILE_QUERY).matches;
+        if (isMobile) {
+          setHasPositionedDesktopEditor(false);
+          setDesktopPosition(null);
+        }
 
         const modalRect = modal.getBoundingClientRect();
         const headerRect = header.getBoundingClientRect();
         const chartRect = visibleChart.getBoundingClientRect();
+        const backdropRect = panel.parentElement?.getBoundingClientRect();
         const sheetTop = isMobile
-          ? panel.getBoundingClientRect().top
+          ? trainingStatSheetTop(
+              backdropRect?.bottom ?? modalRect.bottom,
+              panel.offsetHeight,
+            )
           : modalRect.bottom - 16;
         const layout = trainingChartLayout({
           modalTop: modalRect.top,
@@ -399,17 +626,20 @@ export function TrainingStatEditor({
           clientHeight: modal.clientHeight,
         });
         onChartScaleChange(layout.scale);
-        setDesktopPosition(null);
 
         scrollFrame = requestAnimationFrame(() => {
           scrollFrame = 0;
           const currentModalRect = modal.getBoundingClientRect();
           const currentHeaderRect = header.getBoundingClientRect();
           const currentChartRect = visibleChart.getBoundingClientRect();
+          const currentBackdropRect = panel.parentElement?.getBoundingClientRect();
           const currentSheetTop = isMobile
-            ? panel.getBoundingClientRect().top
+            ? trainingStatSheetTop(
+                currentBackdropRect?.bottom ?? currentModalRect.bottom,
+                panel.offsetHeight,
+              )
             : currentModalRect.bottom - 16;
-          modal.scrollTop = trainingChartScrollTop({
+          const nextScrollTop = trainingChartScrollTop({
             modalTop: currentModalRect.top,
             modalBottom: currentModalRect.bottom,
             headerBottom: currentHeaderRect.bottom,
@@ -420,6 +650,14 @@ export function TrainingStatEditor({
             scrollHeight: modal.scrollHeight,
             clientHeight: modal.clientHeight,
           });
+          const prefersReducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          const smoothInitialScroll =
+            shouldAnimateInitialScroll && !prefersReducedMotion;
+          scrollTrainingModalTo(modal, nextScrollTop, smoothInitialScroll);
+          shouldAnimateInitialScroll = false;
+          if (smoothInitialScroll) hasSmoothScroll = true;
 
           if (!isMobile) {
             editorFrame = requestAnimationFrame(() => {
@@ -449,6 +687,7 @@ export function TrainingStatEditor({
       window.removeEventListener("resize", positionChart);
       window.visualViewport?.removeEventListener("resize", positionChart);
       modal.removeEventListener("scroll", updateDesktopEditorPosition);
+      if (hasSmoothScroll) cancelTrainingModalScroll(modal);
       setDesktopPosition(null);
       onChartScaleChange(1);
     };
@@ -456,9 +695,10 @@ export function TrainingStatEditor({
 
   return createPortal(
     <div
+      ref={backdropRef}
       className={TRAINING_STAT_EDITOR_BACKDROP_CLASS}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <div
@@ -468,7 +708,7 @@ export function TrainingStatEditor({
         aria-labelledby="training-stat-editor-title"
         className="flex max-h-[85dvh] w-full flex-col overflow-y-auto rounded-t-2xl border-t border-border bg-surface shadow-2xl md:max-w-md md:rounded-2xl md:border"
         style={
-          desktopPosition
+          !isMobileViewport && desktopPosition
             ? {
                 position: "fixed",
                 left: desktopPosition.left,
@@ -477,7 +717,9 @@ export function TrainingStatEditor({
                 maxWidth: "none",
                 maxHeight: desktopPosition.maxHeight,
               }
-            : undefined
+            : !isMobileViewport && !hasPositionedDesktopEditor
+              ? { opacity: 0, pointerEvents: "none" }
+              : undefined
         }
       >
         <div className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
@@ -496,7 +738,7 @@ export function TrainingStatEditor({
           <button
             ref={closeRef}
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label={t("detail.close")}
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-lg leading-none hover:bg-border focus-visible:outline-2 focus-visible:outline-selected"
           >
