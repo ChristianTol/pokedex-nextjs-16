@@ -7,6 +7,9 @@ import { useLanguage } from "@/hooks/useLanguage";
 const FOCUSABLE =
   'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
+export const TRAINING_STAT_EDITOR_BACKDROP_CLASS =
+  "fixed inset-0 z-[60] flex items-end justify-center bg-black/20 md:items-center md:p-4";
+
 type Props = {
   stat: string;
   statLabel: string;
@@ -119,7 +122,7 @@ export function TrainingStatEditor({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center md:p-4"
+      className={TRAINING_STAT_EDITOR_BACKDROP_CLASS}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
